@@ -3,3 +3,4 @@
 /front/.direnv
 /front/.envrc
 
+node_modules/

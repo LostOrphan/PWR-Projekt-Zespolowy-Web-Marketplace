@@ -3,4 +3,16 @@
 /front/.direnv
 /front/.envrc
 
+.vscode/
+.idea/
+*.DS_Store
+#Frontend
 node_modules/
+
+#Backend
+.venv/
+.env
+
+__pycache__/
+*.py[cod]
+*$py.class

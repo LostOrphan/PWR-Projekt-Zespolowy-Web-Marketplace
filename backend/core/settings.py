@@ -39,9 +39,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    'api'
+
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'corsheaders',
+    'django_filters',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware'
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -80,8 +88,8 @@ DATABASES = {
         'NAME': os.getenv('DB_NAME'),
         'USER': os.getenv('DB_USER'),          # lub inna nazwa użytkownika
         'PASSWORD': os.getenv('DB_PASSWORD'),   # hasło do bazy
-        'HOST': 'localhost',         # 'localhost' jeśli baza jest u Ciebie, lub adres IP/URL z chmury
-        'PORT': '5432',              # domyślny port PostgreSQL
+        'HOST': os.getenv('DB_HOST'),         # 'localhost' jeśli baza jest u Ciebie, lub adres IP/URL z chmury
+        'PORT': os.getenv('DB_PORT'),              # domyślny port PostgreSQL
     }
 }
 
@@ -121,3 +129,22 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000", # Standardowy port React/CRA
+    "http://localhost:5173", # Standardowy port Vite
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+]
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+}

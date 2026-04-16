@@ -1,11 +1,32 @@
-Webapp marketplace
+Webapp marketplace - FRONTEND EDITION
 
+Przed uruchomieniem:
+$ npm install
+$ npm install react-router-dom
 
-Backend setup: \
-0. Posiadanie zainstalowanego PSQL 17.9 oraz utworzenie bazy danych
-1. python -m venv venv
-2. pip install -r requirements.txt
-3. Utworzenie pliku .env zgodnie z .env_example \
-z venv 
-4. python manage.py migrate
-5. python manage.py runserver
+Uruchomienie serwera lokalnego:
+$ npm run dev
+
+DONE:
+- Prototyp dla strony głównej, logowawnia oraz szczegółów produktów
+
+TODO:
+- Cosmetic changes
+- Podstrony dla [rejestracja; formularz dodawania produktu; profil użyt; obswerwowane; przeglądanie kategorii; ]
+- Logika logowania
+- Logika rejestracji
+- Logika wyświetlania produktów
+- Logika dodawania ogłoszenia
+
+Hierarchia plików:
+/frontend
+  /src
+    App.jsx ("hub" podstron. Podstrony z /pages dodawane tutaj)
+    /pages
+      Home.jsx (Strona główna)
+      Login.jsx (Strona logowania)
+      ProductDetail.jsc (Strona produktu)
+    /styles
+      **[nazwa_strony].css (Stylowanie stron)**
+
+![dog]("/dog.jpg")

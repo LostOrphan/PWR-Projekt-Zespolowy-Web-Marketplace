@@ -35,6 +35,9 @@
           packages = with pkgs; [
             nodejs
             nodePackages.pnpm
+            typescript-language-server
+            vscode-css-languageserver
+            superhtml
             yarn
             self.formatter.${system}
           ];

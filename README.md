@@ -18,15 +18,15 @@ TODO:
 - Logika wyświetlania produktów
 - Logika dodawania ogłoszenia
 
-Hierarchia plików:
-/frontend
-  /src
-    App.jsx ("hub" podstron. Podstrony z /pages dodawane tutaj)
-    /pages
-      Home.jsx (Strona główna)
-      Login.jsx (Strona logowania)
-      ProductDetail.jsc (Strona produktu)
-    /styles
-      **[nazwa_strony].css (Stylowanie stron)**
+Hierarchia plików: \
+/frontend \
+  /src \
+    App.jsx ("hub" podstron. Podstrony z /pages dodawane tutaj) \
+    /pages \
+      Home.jsx (Strona główna) \
+      Login.jsx (Strona logowania) \
+      ProductDetail.jsc (Strona produktu) \
+    /styles \
+      **[nazwa_strony].css (Stylowanie stron)** 
 
-![dog]("/dog.jpg")
+![dog]("./dog.jpg")

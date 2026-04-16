@@ -20,13 +20,13 @@ TODO:
 
 Hierarchia plików: \
 /frontend \
-  /src \
-    App.jsx ("hub" podstron. Podstrony z /pages dodawane tutaj) \
-    /pages \
-      Home.jsx (Strona główna) \
-      Login.jsx (Strona logowania) \
-      ProductDetail.jsc (Strona produktu) \
-    /styles \
-      **[nazwa_strony].css (Stylowanie stron)** 
+  &nbsp;/src \
+    &nbsp;&nbsp;App.jsx ("hub" podstron. Podstrony z /pages dodawane tutaj) \
+    &nbsp;&nbsp;/pages \
+      &nbsp;&nbsp;&nbsp;Home.jsx (Strona główna) \
+      &nbsp;&nbsp;&nbsp;Login.jsx (Strona logowania) \
+      &nbsp;&nbsp;&nbsp;ProductDetail.jsc (Strona produktu) \
+    &nbsp;&nbsp;/styles \
+      &nbsp;&nbsp;&nbsp;**[nazwa_strony].css (Stylowanie stron)** 
 
-![dog]("./dog.jpg")
+![dog](dog.jpg)

@@ -3,11 +3,14 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import userAvatar from '../assets/user.png'
 import productImage from '../assets/gniazdo.webp'
+import { CookiesProvider, useCookies } from 'react-cookie'
 
 export default function Home() {
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  {/* TODO: LOGGED MUST BE A PERMAMENT VARIABLE*/}
+  const [logged, setLogged] = useState(false)
   const navigate = useNavigate()
-
+  const [cookies] = useCookies(['username'])
   return (
     <div className="app-container">
       {/* Header */}
@@ -36,12 +39,22 @@ export default function Home() {
 
           {/*TODO FUNCTIONALITY FOR USER DISPLAY*/}
           {/*ADDITIONAL: SITES/BUTTONS FOR FOLLOWED OFFERS/FOR SALE, SOLD ITEMS, BOUGHT ITEMS*/}
-          
-          <div className="user-section">
-            <img src={userAvatar} alt="User avatar" className="user-avatar" />
-            <span className="user-name">Użytkownik</span>
+          {!cookies.username && (
+            <div className="login-section">
+              <button
+                onClick={() => navigate('/login')}
+                className="dropdown-btn"
+                >Zaloguj się</button>
           </div>
-        </div>
+
+          )}
+          {cookies.username && (
+            <div className="user-section">
+            <img src={userAvatar} alt="User avatar" className="user-avatar" />
+            <span className="user-name">{cookies.username}</span>
+          </div>
+          )}
+          </div>
       </header>
 
       {/* Main content area */}

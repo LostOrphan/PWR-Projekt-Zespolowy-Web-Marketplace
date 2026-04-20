@@ -1,16 +1,20 @@
 import '../styles/Login.css'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import {useCookies } from 'react-cookie'
+import { useNavigate } from 'react-router-dom'
 
 export default function Login() {
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-
+  const [cookies, setCookie] = useCookies(["username"])
+  const navigate = useNavigate()
   const handleSubmit = (e) => {
     e.preventDefault()
-
+    setCookie("username", email, {path: "/"});
     {/*TODO: LOGIN LOGIC VIA BACKEND API*/}
-    
+    navigate('/')
     console.log('Login attempt:', { email, password })
   }
 

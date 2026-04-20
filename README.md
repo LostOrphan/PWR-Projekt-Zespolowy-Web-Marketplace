@@ -25,6 +25,7 @@ Hierarchia plików: \
     &nbsp;&nbsp;/pages \
       &nbsp;&nbsp;&nbsp;Home.jsx (Strona główna) \
       &nbsp;&nbsp;&nbsp;Login.jsx (Strona logowania) \
+      &nbsp;&nbsp;&nbsp;Register.jsx (Strona rejestracji) \
       &nbsp;&nbsp;&nbsp;ProductDetail.jsc (Strona produktu) \
     &nbsp;&nbsp;/styles \
       &nbsp;&nbsp;&nbsp;**[nazwa_strony].css (Stylowanie stron)** 

@@ -20,33 +20,52 @@ export default function Home() {
           {/*TODO: FUNCTIONALITY FOR CATEGORY MENU*/}
           {/*OPTIONALLY CHANGE THE FORM OF THE CATEGORY LIST*/}
           
-          <div className="category-dropdown">
-            <button
-              onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="dropdown-btn"
-            >
-              Kategorie ▼
-            </button>
-            {dropdownOpen && (
-              <div className="dropdown-menu">
-                <a href="#" className="dropdown-link">Kategoria 1</a>
-                <a href="#" className="dropdown-link">Kategoria 2</a>
-                <a href="#" className="dropdown-link">Kategoria 3</a>
-              </div>
-            )}
+          <div className='header-item left-side'>
+            <div className="category-dropdown">
+              <button
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="dropdown-btn"
+              >
+                Kategorie ▼
+              </button>
+              {dropdownOpen && (
+                <div className="dropdown-menu">
+                  <a href="#" className="dropdown-link">Kategoria 1</a>
+                  <a href="#" className="dropdown-link">Kategoria 2</a>
+                  <a href="#" className="dropdown-link">Kategoria 3</a>
+                </div>
+              )}
+              
+              
+            </div>
+            
           </div>
-          <h1>Aplikacja Marketplace</h1>
-
+          <div className='header-logo-item'><h1>Aplikacja Marketplace</h1></div>
+          <div className='header-item right-side'>
+            <div>
+          {!cookies.username && (<button
+          
+                onClick={() => navigate('/login')}
+                className="dropdown-btn"
+                >Dodaj ogłoszenie</button>)}
+          {cookies.username && (<button
+          
+                onClick={() => navigate('/addproduct')}
+                className="dropdown-btn"
+                >Dodaj ogłoszenie</button>)}
+          </div>
+          
+            <div>
           {/*TODO FUNCTIONALITY FOR USER DISPLAY*/}
           {/*ADDITIONAL: SITES/BUTTONS FOR FOLLOWED OFFERS/FOR SALE, SOLD ITEMS, BOUGHT ITEMS*/}
           {!cookies.username && (
-            <div className="login-section">
+            <div className="user-section">
               <button
                 onClick={() => navigate('/login')}
                 className="dropdown-btn"
                 >Zaloguj się</button>
           </div>
-
+          
           )}
           {cookies.username && (
             <div className="user-section">
@@ -54,6 +73,8 @@ export default function Home() {
             <span className="user-name">{cookies.username}</span>
           </div>
           )}
+          </div>
+          </div>
           </div>
       </header>
 

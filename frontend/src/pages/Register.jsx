@@ -83,10 +83,10 @@ export default function Login() {
               />
             </div>
             <div className="form-group">
-              <label htmlFor="password">Powtórz hasło:</label>
+              <label htmlFor="password2">Powtórz hasło:</label>
               <input
                 type="password"
-                id="password"
+                id="password2"
                 value={password2}
                 onChange={(e) => setPassword2(e.target.value)}
                 required

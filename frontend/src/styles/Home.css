@@ -15,31 +15,38 @@
 
 .app-header {
   background-color: #e8e4d1;
+  width: 100%;
   color: #333;
-  padding: 20px 25px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
+  padding: 10px 25px;
   border-bottom: 2px solid #ddd9cc;
 }
 
 .header-bottom {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   width: 100%;
   position: relative;
 }
+.left-side {
+justify-content: left;
+}
+.right-side {
+justify-content: right;
+}
+.header-item {
+width: 35%;
+display: flex;
+}
 
+.header-logo-item {
+width: 30%;
+}
 .app-header h1 {
-  margin: 0;
   font-size: 24px;
   font-weight: 600;
   color: #333;
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  text-align: center;
 }
 
 .category-dropdown {

@@ -3,6 +3,7 @@ import Home from './pages/Home'
 import Login from './pages/Login'
 import ProductDetail from './pages/ProductDetail'
 import Register from './pages/Register'
+import AddProduct from './pages/AddProduct'
 import {CookiesProvider} from 'react-cookie'
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/product" element={<ProductDetail />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/addproduct" element={<AddProduct />} />
       </Routes>
     </BrowserRouter>
     </CookiesProvider>

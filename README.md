@@ -8,11 +8,11 @@ Uruchomienie serwera lokalnego:
 $ npm run dev
 
 DONE:
-- Prototyp dla strony głównej, logowawnia oraz szczegółów produktów
+- Prototyp dla strony głównej, logowawnia, rejestracja, formularz dodawania produktu oraz szczegółów produktów
 
 TODO:
 - Cosmetic changes
-- Podstrony dla [rejestracja; formularz dodawania produktu; profil użyt; obswerwowane; przeglądanie kategorii; ]
+- Podstrony dla [profil użyt; obswerwowane; przeglądanie kategorii; ]
 - Logika logowania
 - Logika rejestracji
 - Logika wyświetlania produktów

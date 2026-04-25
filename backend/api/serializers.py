@@ -2,31 +2,33 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import Category, Location, Listing, ListingImage, ListingStatus
 from .models import Address
+import django.contrib.auth.password_validation as validators
 User = get_user_model()
 
 # ==========================================
 #       AUTORYZACJA I UŻYTKOWNIK
 # ==========================================
 class UserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(
+        write_only=True, 
+        required=True,
+        validators=[validators.validate_password], 
+        style={'input_type': 'password'}
+    )
     class Meta:
         model = User
+        
         fields = ('id', 'email', 'first_name', 'last_name', 'phone_num', 'password', 'date_joined')
         # Zabezpieczenie: API nigdy nie zwróci hasła
         extra_kwargs = {
-            'password': {'write_only': True},
             'date_joined': {'read_only': True}
         }
 
     def create(self, validated_data):
         # Hasło hashowane
-        user = User.objects.create_user(
-            email=validated_data['email'],
-            password=validated_data['password'],
-            first_name=validated_data.get('first_name', ''),
-            last_name=validated_data.get('last_name', ''),
-            phone_num=validated_data.get('phone_num', '')
-        )
+        user = User.objects.create_user(**validated_data)
         return user
+    
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address

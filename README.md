@@ -4,7 +4,7 @@
 
 ## Backend
 
-### Backend API dostępne pod endpointem /api/docs
+### Backend API dostępne pod endpointem address:port/api/docs
 
 ### Backend setup:
 > 1. Instalacja PSQL 17.9 oraz utworzenie pustej bazy danych oraz użytkownika z hasłem + posiadanie pythona (3.10+)

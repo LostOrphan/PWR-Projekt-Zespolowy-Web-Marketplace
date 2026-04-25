@@ -13,7 +13,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status as http_status 
-from drf_spectacular.utils import extend_schema, extend_schema_view # <-- Nowy import
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
 
 User = get_user_model()
 
@@ -23,7 +23,11 @@ User = get_user_model()
 @extend_schema_view(
     post=extend_schema(
         summary="Zarejestruj nowego użytkownika",
-        description="Tworzy nowe konto w systemie na podstawie przesłanych danych (np. email, hasło). Zwraca kod 201 przy sukcesie lub 400 z listą błędów walidacji."
+        description="Tworzy nowe konto w systemie na podstawie przesłanych danych (np. email, hasło). Zwraca kod 201 przy sukcesie lub 400 z listą błędów walidacji.",
+        responses={
+            201: UserSerializer,
+            400: OpenApiResponse(description="Błąd walidacji danych (np. email jest już zajęty, brak wymaganego pola).")
+        }
     )
 )
 class RegisterView(generics.CreateAPIView):
@@ -38,11 +42,18 @@ class RegisterView(generics.CreateAPIView):
 @extend_schema_view(
     list=extend_schema(
         summary="Pobierz listę kategorii",
-        description="Zwraca pełną, posortowaną listę wszystkich dostępnych kategorii dla ogłoszeń."
+        description="Zwraca pełną, posortowaną listę wszystkich dostępnych kategorii dla ogłoszeń.",
+        responses={
+            200: CategorySerializer(many=True)
+        }
     ),
     retrieve=extend_schema(
         summary="Pobierz szczegóły kategorii",
-        description="Zwraca informacje o konkretnej kategorii na podstawie podanego ID."
+        description="Zwraca informacje o konkretnej kategorii na podstawie podanego ID.",
+        responses={
+            200: CategorySerializer,
+            404: OpenApiResponse(description="Kategoria o podanym ID nie istnieje.")
+        }
     )
 )
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
@@ -54,11 +65,18 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
 @extend_schema_view(
     list=extend_schema(
         summary="Pobierz listę lokalizacji",
-        description="Zwraca listę wszystkich dostępnych lokalizacji (np. miast lub regionów) przypisywanych do ogłoszeń."
+        description="Zwraca listę wszystkich dostępnych lokalizacji (np. miast lub regionów) przypisywanych do ogłoszeń.",
+        responses={
+            200: LocationSerializer(many=True)
+        }
     ),
     retrieve=extend_schema(
         summary="Pobierz szczegóły lokalizacji",
-        description="Zwraca szczegółowe dane konkretnej lokalizacji na podstawie ID."
+        description="Zwraca szczegółowe dane konkretnej lokalizacji na podstawie ID.",
+        responses={
+            200: LocationSerializer,
+            404: OpenApiResponse(description="Lokalizacja o podanym ID nie istnieje.")
+        }
     )
 )
 class LocationViewSet(viewsets.ReadOnlyModelViewSet):
@@ -73,27 +91,59 @@ class LocationViewSet(viewsets.ReadOnlyModelViewSet):
 @extend_schema_view(
     list=extend_schema(
         summary="Przeglądaj ogłoszenia",
-        description="Zwraca listę aktywnych ogłoszeń (ukrywa te ze statusem 'Usunięte'). Obsługuje filtrowanie po polach: `category`, `location`, `status` (np. `?category=1`) oraz wyszukiwanie tekstowe (`?search=słowo`)."
+        description="Zwraca listę aktywnych ogłoszeń (ukrywa te ze statusem 'Usunięte'). Obsługuje filtrowanie po polach: `category`, `location`, `status` (np. `?category=1`) oraz wyszukiwanie tekstowe (`?search=słowo`).",
+        responses={
+            200: ListingSerializer(many=True)
+        }
     ),
     retrieve=extend_schema(
         summary="Pobierz szczegóły ogłoszenia",
-        description="Zwraca pełne dane konkretnego ogłoszenia, w tym powiązanego sprzedawcę i metody dostawy."
+        description="Zwraca pełne dane konkretnego ogłoszenia, w tym powiązanego sprzedawcę i metody dostawy.",
+        responses={
+            200: ListingSerializer,
+            404: OpenApiResponse(description="Ogłoszenie nie istnieje lub zostało usunięte.")
+        }
     ),
     create=extend_schema(
         summary="Dodaj nowe ogłoszenie",
-        description="**Wymaga autoryzacji (Token JWT).** Zalogowany użytkownik jest automatycznie przypisywany jako `seller`. Status ogłoszenia jest domyślnie ustawiany na 'Aktywne'."
+        description="**Wymaga autoryzacji (Token JWT).** Zalogowany użytkownik jest automatycznie przypisywany jako `seller`. Status ogłoszenia jest domyślnie ustawiany na 'Aktywne'.",
+        responses={
+            201: ListingSerializer,
+            400: OpenApiResponse(description="Błąd walidacji danych (np. brak wymaganych pól, zły format ceny)."),
+            401: OpenApiResponse(description="Brak poprawnego tokenu JWT (niezalogowany).")
+        }
     ),
     update=extend_schema(
         summary="Zaktualizuj całe ogłoszenie",
-        description="**Wymaga autoryzacji i bycia właścicielem (IsOwner).** Nadpisuje wszystkie pola w ogłoszeniu."
+        description="**Wymaga autoryzacji i bycia właścicielem (IsOwner).** Nadpisuje wszystkie pola w ogłoszeniu.",
+        responses={
+            200: ListingSerializer,
+            400: OpenApiResponse(description="Błąd walidacji danych."),
+            401: OpenApiResponse(description="Brak poprawnego tokenu JWT."),
+            403: OpenApiResponse(description="Zabronione - nie jesteś właścicielem ogłoszenia."),
+            404: OpenApiResponse(description="Ogłoszenie nie istnieje.")
+        }
     ),
     partial_update=extend_schema(
         summary="Zaktualizuj częściowo ogłoszenie",
-        description="**Wymaga autoryzacji i bycia właścicielem (IsOwner).** Służy do modyfikacji wybranych pól (np. tylko zmiana ceny lub opisu, metodą PATCH)."
+        description="**Wymaga autoryzacji i bycia właścicielem (IsOwner).** Służy do modyfikacji wybranych pól (np. tylko zmiana ceny lub opisu, metodą PATCH).",
+        responses={
+            200: ListingSerializer,
+            400: OpenApiResponse(description="Błąd walidacji przesłanych danych."),
+            401: OpenApiResponse(description="Brak poprawnego tokenu JWT."),
+            403: OpenApiResponse(description="Zabronione - nie jesteś właścicielem ogłoszenia."),
+            404: OpenApiResponse(description="Ogłoszenie nie istnieje.")
+        }
     ),
     destroy=extend_schema(
         summary="Usuń ogłoszenie (Soft Delete)",
-        description="**Wymaga autoryzacji i bycia właścicielem (IsOwner).** Zamiast fizycznego usunięcia z bazy danych, endpoint ten oznacza ogłoszenie statusem 'Usunięte'. Zwraca kod 204."
+        description="**Wymaga autoryzacji i bycia właścicielem (IsOwner).** Zamiast fizycznego usunięcia z bazy danych, endpoint ten oznacza ogłoszenie statusem 'Usunięte'. Zwraca kod 204.",
+        responses={
+            204: OpenApiResponse(description="Pomyślnie usunięto (status zmieniony na Usunięte)."),
+            401: OpenApiResponse(description="Brak poprawnego tokenu JWT."),
+            403: OpenApiResponse(description="Zabronione - nie jesteś właścicielem ogłoszenia."),
+            404: OpenApiResponse(description="Ogłoszenie nie istnieje.")
+        }
     )
 )
 class ListingViewSet(viewsets.ModelViewSet):
@@ -127,7 +177,14 @@ class ListingViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         summary="Zmień status ogłoszenia",
-        description="**Wymaga autoryzacji i bycia właścicielem (IsOwner).** Szybki endpoint do zmiany samego statusu. Oczekuje JSON-a: `{\"status\": \"Nowa nazwa statusu\"}`."
+        description="**Wymaga autoryzacji i bycia właścicielem (IsOwner).** Szybki endpoint do zmiany samego statusu. Oczekuje JSON-a: `{\"status\": \"Nowa nazwa statusu\"}`.",
+        responses={
+            200: OpenApiResponse(description="Pomyślnie zmieniono status ogłoszenia."),
+            400: OpenApiResponse(description="Brak podanego statusu lub podany status nie istnieje w słowniku."),
+            401: OpenApiResponse(description="Brak poprawnego tokenu JWT."),
+            403: OpenApiResponse(description="Zabronione - próbujesz zmienić status ogłoszenia, którego nie jesteś właścicielem."),
+            404: OpenApiResponse(description="Ogłoszenie nie istnieje.")
+        }
     )
     @action(detail=True, methods=['patch'])
     def change_status(self, request, pk=None):

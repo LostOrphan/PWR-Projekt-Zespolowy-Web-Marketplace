@@ -1,7 +1,7 @@
 import '../styles/Login.css'
 import { useState } from 'react'
-import {useCookies } from 'react-cookie'
 import { useNavigate } from 'react-router-dom'
+import { registerUser } from '../api/auth'
 
 export default function Login() {
   const [name, setName] = useState('')
@@ -10,22 +10,44 @@ export default function Login() {
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [password2, setPassword2] = useState('')
-  const [cookies, setCookie] = useCookies(["username"])
+  const [error, setError] = useState('')
   const navigate = useNavigate()
-  const handleSubmit = (e) => {
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    setCookie("username", email, {path: "/"});
-    {/*TODO: REGISTER LOGIC VIA BACKEND API*/}
-    navigate('/')
-    console.log('Login attempt:', { email, password })
+    setError('')
+    
+    if (password !== password2) {
+      setError('Hasła nie są identyczne')
+      return
+    }
+
+    try {
+      const result = await registerUser({
+        email,
+        firstName: name,
+        lastName: surname,
+        phone,
+        password,
+      })
+
+      if (result.success) {
+        navigate('/login')
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      console.error('Registration error:', err)
+      setError('Błąd połączenia z serwerem')
+    }
   }
 
   return (
     <div className="login-container">
       <div className="login-card">
         <div className="login-form-wrapper">
-          <h1>Zarejestruj się
-          </h1>
+          <h1>Zarejestruj się</h1>
+          {error && <div style={{color: '#d32f2f', marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#ffebee', borderRadius: '4px', fontSize: '0.9rem'}}>{error}</div>}
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label htmlFor="name">Imię:</label>
@@ -67,7 +89,6 @@ export default function Login() {
                 id="phone"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                required
                 placeholder="Twój numer telefonu"
               />
             </div>

@@ -1,21 +1,35 @@
 import '../styles/Login.css'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import {useCookies } from 'react-cookie'
+import { useCookies } from 'react-cookie'
 import { useNavigate } from 'react-router-dom'
+import { loginUser } from '../api/auth'
 
 export default function Login() {
-
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [cookies, setCookie] = useCookies(["username"])
+  const [error, setError] = useState('')
+  const [cookies, setCookie] = useCookies(["username", "token"])
   const navigate = useNavigate()
-  const handleSubmit = (e) => {
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    setCookie("username", email, {path: "/"});
-    {/*TODO: LOGIN LOGIC VIA BACKEND API*/}
-    navigate('/')
-    console.log('Login attempt:', { email, password })
+    setError('')
+
+    try {
+      const result = await loginUser({ email, password })
+
+      if (result.success) {
+        setCookie("username", email, { path: "/" })
+        setCookie("token", result.data.access, { path: "/" })
+        navigate('/')
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      console.error('Login error:', err)
+      setError('Błąd połączenia z serwerem')
+    }
   }
 
   return (
@@ -23,6 +37,7 @@ export default function Login() {
       <div className="login-card">
         <div className="login-form-wrapper">
           <h1>Zaloguj się</h1>
+          {error && <div style={{color: '#d32f2f', marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#ffebee', borderRadius: '4px', fontSize: '0.9rem'}}>{error}</div>}
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label htmlFor="email">Email:</label>

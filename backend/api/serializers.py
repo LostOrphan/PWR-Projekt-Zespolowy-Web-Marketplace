@@ -71,6 +71,7 @@ class ListingSerializer(serializers.ModelSerializer):
     # Zagnieżdżoną lista w formacie JSON (tylko do odczytu)
     images = ListingImageSerializer(many=True, read_only=True)
     seller = SellerSerializer(read_only=True)
+    location = LocationSerializer(read_only=True)
     
     # Dodatkowe pole do przyjmowania plików zdjęć z frontendu (FormData)
     uploaded_images = serializers.ListField(

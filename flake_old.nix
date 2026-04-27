@@ -1,6 +1,8 @@
 {
-  description = "A Nix-flake-based Node.js + Django development environment";
-  inputs.nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
+  description = "A Nix-flake-based Node.js development environment";
+
+  inputs.nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1"; # unstable Nixpkgs
+
   outputs = {self, ...} @ inputs: let
     supportedSystems = [
       "x86_64-linux"
@@ -23,6 +25,7 @@
       nodejs = prev.nodejs;
       yarn = prev.yarn.override {inherit nodejs;};
     };
+
     devShells = forEachSupportedSystem (
       {
         pkgs,
@@ -37,39 +40,13 @@
             superhtml
             yarn
             self.formatter.${system}
-            (python313.withPackages (ps:
-              with ps; [
-                django
-                djangorestframework
-                django-cors-headers
-                django-filter
-                djangorestframework-simplejwt
-                drf-spectacular
-
-                psycopg2
-                sqlparse
-
-                asgiref
-                attrs
-                pillow
-                python-dotenv
-                pyyaml
-                pyjwt
-                inflection
-                uritemplate
-
-                jsonschema
-                jsonschema-specifications
-                referencing
-                rpds-py
-
-                tzdata
-                pip
-              ]))
+            python3
+            python313Packages.pip
           ];
         };
       }
     );
+
     formatter = forEachSupportedSystem ({pkgs, ...}: pkgs.nixfmt);
   };
 }

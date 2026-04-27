@@ -6,6 +6,7 @@
 > 1. Przed uruchomieniem:
 > 1.1. $ npm install
 > 1.2. $ npm install react-router-dom
+> 1.3. $ npm install react-cookies
 >
 > 2. Uruchomienie serwera lokalnego:
 > 2.1. $ npm run dev

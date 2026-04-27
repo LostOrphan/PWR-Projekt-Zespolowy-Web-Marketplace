@@ -1,0 +1,847 @@
+openapi: 3.0.3
+info:
+  title: Marketplace API
+  version: 1.0.0
+  description: Dokumentacja API dla backendu
+paths:
+  /api/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /api/auth/refresh/:
+    post:
+      operationId: auth_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/categories/:
+    get:
+      operationId: categories_list
+      description: Zwraca pełną, posortowaną listę wszystkich dostępnych kategorii
+        dla ogłoszeń.
+      summary: Pobierz listę kategorii
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - categories
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCategoryList'
+          description: ''
+  /api/categories/{id}/:
+    get:
+      operationId: categories_retrieve
+      description: Zwraca informacje o konkretnej kategorii na podstawie podanego
+        ID.
+      summary: Pobierz szczegóły kategorii
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this category.
+        required: true
+      tags:
+      - categories
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+        '404':
+          description: Kategoria o podanym ID nie istnieje.
+  /api/listings/:
+    get:
+      operationId: listings_list
+      description: 'Zwraca listę aktywnych ogłoszeń (ukrywa te ze statusem ''Usunięte'').
+        Obsługuje filtrowanie po polach: `category`, `location`, `status` (np. `?category=1`)
+        oraz wyszukiwanie tekstowe (`?search=słowo`).'
+      summary: Przeglądaj ogłoszenia
+      parameters:
+      - in: query
+        name: category
+        schema:
+          type: integer
+      - in: query
+        name: location
+        schema:
+          type: integer
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: integer
+      tags:
+      - listings
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedListingList'
+          description: ''
+    post:
+      operationId: listings_create
+      description: '**Wymaga autoryzacji (Token JWT).** Zalogowany użytkownik jest
+        automatycznie przypisywany jako `seller`. Status ogłoszenia jest domyślnie
+        ustawiany na ''Aktywne''.'
+      summary: Dodaj nowe ogłoszenie
+      tags:
+      - listings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Listing'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Listing'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Listing'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+          description: ''
+        '400':
+          description: Błąd walidacji danych (np. brak wymaganych pól, zły format
+            ceny).
+        '401':
+          description: Brak poprawnego tokenu JWT (niezalogowany).
+  /api/listings/{id}/:
+    get:
+      operationId: listings_retrieve
+      description: Zwraca pełne dane konkretnego ogłoszenia, w tym powiązanego sprzedawcę
+        i metody dostawy.
+      summary: Pobierz szczegóły ogłoszenia
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this listing.
+        required: true
+      tags:
+      - listings
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+          description: ''
+        '404':
+          description: Ogłoszenie nie istnieje lub zostało usunięte.
+    put:
+      operationId: listings_update
+      description: '**Wymaga autoryzacji i bycia właścicielem (IsOwner).** Nadpisuje
+        wszystkie pola w ogłoszeniu.'
+      summary: Zaktualizuj całe ogłoszenie
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this listing.
+        required: true
+      tags:
+      - listings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Listing'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Listing'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Listing'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+          description: ''
+        '400':
+          description: Błąd walidacji danych.
+        '401':
+          description: Brak poprawnego tokenu JWT.
+        '403':
+          description: Zabronione - nie jesteś właścicielem ogłoszenia.
+        '404':
+          description: Ogłoszenie nie istnieje.
+    patch:
+      operationId: listings_partial_update
+      description: '**Wymaga autoryzacji i bycia właścicielem (IsOwner).** Służy do
+        modyfikacji wybranych pól (np. tylko zmiana ceny lub opisu, metodą PATCH).'
+      summary: Zaktualizuj częściowo ogłoszenie
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this listing.
+        required: true
+      tags:
+      - listings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedListing'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedListing'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedListing'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Listing'
+          description: ''
+        '400':
+          description: Błąd walidacji przesłanych danych.
+        '401':
+          description: Brak poprawnego tokenu JWT.
+        '403':
+          description: Zabronione - nie jesteś właścicielem ogłoszenia.
+        '404':
+          description: Ogłoszenie nie istnieje.
+    delete:
+      operationId: listings_destroy
+      description: '**Wymaga autoryzacji i bycia właścicielem (IsOwner).** Zamiast
+        fizycznego usunięcia z bazy danych, endpoint ten oznacza ogłoszenie statusem
+        ''Usunięte''. Zwraca kod 204.'
+      summary: Usuń ogłoszenie (Soft Delete)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this listing.
+        required: true
+      tags:
+      - listings
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: Pomyślnie usunięto (status zmieniony na Usunięte).
+        '401':
+          description: Brak poprawnego tokenu JWT.
+        '403':
+          description: Zabronione - nie jesteś właścicielem ogłoszenia.
+        '404':
+          description: Ogłoszenie nie istnieje.
+  /api/listings/{id}/change_status/:
+    patch:
+      operationId: listings_change_status_partial_update
+      description: '**Wymaga autoryzacji i bycia właścicielem (IsOwner).** Szybki
+        endpoint do zmiany samego statusu. Oczekuje JSON-a: `{"status": "Nowa nazwa
+        statusu"}`.'
+      summary: Zmień status ogłoszenia
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this listing.
+        required: true
+      tags:
+      - listings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedListing'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedListing'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedListing'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: Pomyślnie zmieniono status ogłoszenia.
+        '400':
+          description: Brak podanego statusu lub podany status nie istnieje w słowniku.
+        '401':
+          description: Brak poprawnego tokenu JWT.
+        '403':
+          description: Zabronione - próbujesz zmienić status ogłoszenia, którego nie
+            jesteś właścicielem.
+        '404':
+          description: Ogłoszenie nie istnieje.
+  /api/locations/:
+    get:
+      operationId: locations_list
+      description: Zwraca listę wszystkich dostępnych lokalizacji (np. miast lub regionów)
+        przypisywanych do ogłoszeń.
+      summary: Pobierz listę lokalizacji
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - locations
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLocationList'
+          description: ''
+  /api/locations/{id}/:
+    get:
+      operationId: locations_retrieve
+      description: Zwraca szczegółowe dane konkretnej lokalizacji na podstawie ID.
+      summary: Pobierz szczegóły lokalizacji
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this location.
+        required: true
+      tags:
+      - locations
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Location'
+          description: ''
+        '404':
+          description: Lokalizacja o podanym ID nie istnieje.
+  /api/users/register/:
+    post:
+      operationId: users_register_create
+      description: Tworzy nowe konto w systemie na podstawie przesłanych danych (np.
+        email, hasło). Zwraca kod 201 przy sukcesie lub 400 z listą błędów walidacji.
+      summary: Zarejestruj nowego użytkownika
+      tags:
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/User'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+        '400':
+          description: Błąd walidacji danych (np. email jest już zajęty, brak wymaganego
+            pola).
+components:
+  schemas:
+    Address:
+      type: object
+      properties:
+        location:
+          type: integer
+          nullable: true
+          title: Lokalizacja (Miasto)
+        street:
+          type: string
+          nullable: true
+          title: Ulica
+          maxLength: 255
+        building_number:
+          type: string
+          nullable: true
+          title: Nr budynku
+          maxLength: 20
+        apartment_number:
+          type: string
+          nullable: true
+          title: Nr mieszkania
+          maxLength: 20
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          nullable: true
+      required:
+      - id
+      - name
+    Listing:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        seller:
+          allOf:
+          - $ref: '#/components/schemas/Seller'
+          readOnly: true
+        category:
+          type: integer
+        location:
+          type: integer
+          nullable: true
+          title: Miasto
+        status:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        street:
+          type: string
+          nullable: true
+          title: Ulica
+          maxLength: 255
+        building_number:
+          type: string
+          nullable: true
+          title: Numer budynku
+          maxLength: 20
+        apartment_number:
+          type: string
+          nullable: true
+          title: Numer lokalu
+          maxLength: 20
+        delivery_methods:
+          type: array
+          items:
+            type: integer
+            title: Metody dostawy
+          title: Metody dostawy
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/ListingImage'
+          readOnly: true
+        uploaded_images:
+          type: array
+          items:
+            type: string
+          writeOnly: true
+      required:
+      - category
+      - created_at
+      - id
+      - images
+      - price
+      - seller
+      - status
+      - title
+      - updated_at
+    ListingImage:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        image:
+          type: string
+          format: uri
+        display_order:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        is_primary:
+          type: boolean
+      required:
+      - id
+      - image
+    Location:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        city:
+          type: string
+          maxLength: 100
+        region:
+          type: string
+          nullable: true
+          maxLength: 100
+        country:
+          type: string
+          maxLength: 100
+      required:
+      - city
+      - country
+      - id
+    PaginatedCategoryList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+    PaginatedListingList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Listing'
+    PaginatedLocationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Location'
+    PatchedListing:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        seller:
+          allOf:
+          - $ref: '#/components/schemas/Seller'
+          readOnly: true
+        category:
+          type: integer
+        location:
+          type: integer
+          nullable: true
+          title: Miasto
+        status:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        street:
+          type: string
+          nullable: true
+          title: Ulica
+          maxLength: 255
+        building_number:
+          type: string
+          nullable: true
+          title: Numer budynku
+          maxLength: 20
+        apartment_number:
+          type: string
+          nullable: true
+          title: Numer lokalu
+          maxLength: 20
+        delivery_methods:
+          type: array
+          items:
+            type: integer
+            title: Metody dostawy
+          title: Metody dostawy
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/ListingImage'
+          readOnly: true
+        uploaded_images:
+          type: array
+          items:
+            type: string
+          writeOnly: true
+    Seller:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        first_name:
+          type: string
+          maxLength: 50
+        last_name:
+          type: string
+          maxLength: 50
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        phone_num:
+          type: string
+          nullable: true
+          maxLength: 15
+        address:
+          allOf:
+          - $ref: '#/components/schemas/Address'
+          readOnly: true
+      required:
+      - address
+      - email
+      - first_name
+      - id
+      - last_name
+    TokenObtainPair:
+      type: object
+      properties:
+        email:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - email
+      - password
+      - refresh
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          writeOnly: true
+      required:
+      - access
+      - refresh
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        first_name:
+          type: string
+          maxLength: 50
+        last_name:
+          type: string
+          maxLength: 50
+        phone_num:
+          type: string
+          nullable: true
+          maxLength: 15
+        password:
+          type: string
+          writeOnly: true
+          maxLength: 128
+        date_joined:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - date_joined
+      - email
+      - first_name
+      - id
+      - last_name
+      - password
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

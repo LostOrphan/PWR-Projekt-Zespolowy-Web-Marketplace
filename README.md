@@ -7,7 +7,21 @@
 ### Backend API dostępne pod endpointem address:port/api/docs
 
 ### Backend setup:
-> 1. Instalacja PSQL 17.9 oraz utworzenie pustej bazy danych oraz użytkownika z hasłem + posiadanie pythona (3.10+)
+> 1. Instalacja PSQL 17.9 oraz utworzenie pustej bazy danych oraz użytkownika z hasłem + posiadanie pythona (3.12+)
+>   
+>   Linux:
+>   Utworzenie użytkownika z hasłem
+>   ```sudo -u postgres psql -c "CREATE USER nazwa_uzytkownika WITH PASSWORD 'TwojeSuperHaslo123';"```
+>
+>   Utworzenie bazy danych z przypisaniem właściciela
+>  ``` sudo -u postgres psql -c "CREATE DATABASE nazwa_bazy OWNER nazwa_uzytkownika;"```
+>
+>   Windows:
+>   Utworzenie użytkownika z hasłem
+>   ```psql -U postgres -c "CREATE USER nazwa_uzytkownika WITH PASSWORD 'TwojeSuperHaslo123';"```
+>
+>   Utworzenie bazy danych z przypisaniem właściciela
+>   ```psql -U postgres -c "CREATE DATABASE nazwa_bazy OWNER nazwa_uzytkownika;"```
 > 2. Przejście do katalogu ```backend```
 > ```cd backend```
 >

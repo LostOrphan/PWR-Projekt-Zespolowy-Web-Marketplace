@@ -1,7 +1,6 @@
 .direnv
 .envrc
 
-<<<<<<< HEAD
 .vscode/
 .idea/
 *.DS_Store
@@ -15,6 +14,7 @@ node_modules/
 __pycache__/
 *.py[cod]
 *$py.class
-=======
+
 node_modules/
->>>>>>> cbf322b60b1e6dafe87eef5c7a54a1181b8a0986
+
+.db

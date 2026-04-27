@@ -10,8 +10,6 @@
 > 2. Uruchomienie serwera lokalnego:
 > 2.1. $ npm run dev
 ---
-# Webapp marketplace
----
 ## Backend
 ---
 ### Backend API dostępne pod endpointem address:port/api/docs

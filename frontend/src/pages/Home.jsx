@@ -32,10 +32,20 @@ export default function Home() {
     fetchData()
   }, [])
 
+  const handleSearch = (e) => {
+    e.preventDefault()
+    const formData = new FormData(e.target)
+    const query = formData.get('search')
+    if (query.trim()) {
+      navigate(`/search?q=${encodeURIComponent(query)}`)
+    }
+  }
+
   const handleLogout = () => {
     logoutUser(removeCookie)
     navigate('/login')
   }
+
 
   const handleCategoryFilter = (categoryId) => {
     setSelectedCategory(categoryId)
@@ -124,13 +134,14 @@ export default function Home() {
         {/* Main content */}
         <main className="main-content">
           {/* Search Bar */}
-          <div className="search-bar-container">
+          <form onSubmit={handleSearch} className="search-bar-container">
             <input
               type="text"
               className="search-bar"
               placeholder="Szukaj produktów..."
+              name="search"
             />
-          </div>
+          </form>
 
           {/* Listings Section */}
           <div className="category-section">

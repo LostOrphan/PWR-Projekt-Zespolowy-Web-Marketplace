@@ -4,6 +4,7 @@ import Login from './pages/Login'
 import ProductDetail from './pages/ProductDetail'
 import Register from './pages/Register'
 import AddProduct from './pages/AddProduct'
+import Search from './pages/Search'
 import {CookiesProvider} from 'react-cookie'
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/search" element={<Search />} />
         <Route path="/login" element={<Login />} />
         <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/register" element={<Register />} />

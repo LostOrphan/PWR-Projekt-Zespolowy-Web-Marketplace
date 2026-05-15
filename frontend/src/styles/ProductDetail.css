@@ -2,17 +2,22 @@
   background-color: #ffffff;
   color: #333;
   border: 1px solid #ddd9cc;
-  padding: 8px 16px;
-  border-radius: 4px;
+  padding: 12px 20px;
+  border-radius: 20px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
-  transition: background-color 0.3s;
+  transition: background-color 0.3s, border-color 0.3s;
   margin-bottom: 30px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: fit-content;
 }
 
 .back-btn:hover {
   background-color: #f9f8f5;
+  border-color: #c9c2b8;
 }
 
 .header-title {

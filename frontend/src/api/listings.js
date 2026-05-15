@@ -95,6 +95,43 @@ export const getListingById = async (id) => {
   }
 }
 
+export const searchListings = async (query, filters = {}, fetchAll = false) => {
+  try {
+    const params = new URLSearchParams({ search: query, ...filters })
+    const response = await fetch(`${API_ENDPOINTS.listings}?${params}`)
+    const data = await response.json()
+
+    if (response.status === 200) {
+      if (!fetchAll) {
+        return { success: true, data: data.results || [] }
+      }
+
+      // Fetch all pages if fetchAll is true
+      const allResults = [...(data.results || [])]
+      let nextUrl = data.next
+
+      while (nextUrl) {
+        const nextResponse = await fetch(nextUrl)
+        const nextData = await nextResponse.json()
+
+        if (nextResponse.status === 200) {
+          allResults.push(...(nextData.results || []))
+          nextUrl = nextData.next
+        } else {
+          return { success: false, error: 'Błąd przy pobieraniu ogłoszeń' }
+        }
+      }
+
+      return { success: true, data: allResults }
+    } else {
+      return { success: false, error: 'Błąd przy pobieraniu ogłoszeń' }
+    }
+  } catch (err) {
+    console.error('Search listings error:', err)
+    return { success: false, error: 'Błąd połączenia' }
+  }
+}
+
 export const createListing = async (listingData, token) => {
   try {
     if (!token) {

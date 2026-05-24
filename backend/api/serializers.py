@@ -5,6 +5,7 @@ from .models import Category, Location, Listing, ListingImage, ListingStatus
 from .models import Address
 from .models import Order, Listing, ListingStatus
 import django.contrib.auth.password_validation as validators
+
 User = get_user_model()
 
 # ==========================================
@@ -107,6 +108,10 @@ class SellerSerializer(serializers.ModelSerializer):
         model = User
         # Zwracamy tylko bezpieczne dane kontaktowe
         fields = ('id', 'first_name', 'last_name', 'email', 'phone_num', 'address')
+class PublicSellerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'first_name']        
 class ListingSerializer(serializers.ModelSerializer):
     # Zagnieżdżoną lista w formacie JSON (tylko do odczytu)
     images = ListingImageSerializer(many=True, read_only=True)
@@ -204,16 +209,22 @@ class OrderSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        listing = validated_data['listing']
+        # 1. Zamiast pobierać listing zwyczajnie, pobieramy go z bazodanową blokadą wiersza!
+        # Żadne inne zapytanie nie zmodyfikuje tego ogłoszenia, dopóki ta transakcja trwa.
+        listing_id = validated_data['listing'].id
+        listing = Listing.objects.select_for_update().get(id=listing_id)
         
-        # 1. Uzupełnienie danych, które nie przyszły z frontendu
+        # 2. Upewniamy się PONOWNIE, że po założeniu blokady ogłoszenie nadal jest aktywne
+        if listing.status.name != "Aktywne":
+            raise serializers.ValidationError({"listing": "Ogłoszenie zostało właśnie kupione przez kogoś innego."})
+
+        validated_data['listing'] = listing # Nadpisujemy w zwalidowanych danych
         validated_data['buyer'] = self.context['request'].user
-        validated_data['purchase_price'] = listing.price  # Zamrożenie ceny w zamówieniu
+        validated_data['purchase_price'] = listing.price
         
-        # 2. Utworzenie obiektu zamówienia
+        # 3. Zapis i zmiana statusu
         order = super().create(validated_data)
-        
-        # 3. Zmiana statusu ogłoszenia na "Zakończone"
+        # 4. Zmiana statusu ogłoszenia na "Zakończone"
         try:
             completed_status = ListingStatus.objects.get(name="Zakończone")
         except ListingStatus.DoesNotExist:

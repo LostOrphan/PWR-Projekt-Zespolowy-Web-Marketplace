@@ -26,7 +26,7 @@ load_dotenv()
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG')
+DEBUG = os.getenv('DEBUG').lower() in ('true', '1', 't')
 ALLOWED_HOSTS = []
 
 
@@ -160,7 +160,8 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.ScopedRateThrottle', 
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '1000/day',   
+        'anon': '1000/day',
+        'login': '10/minute',   
         'user': '5000/day',   
         'register': '3/minute',
         'create_offer': '10/hour', 

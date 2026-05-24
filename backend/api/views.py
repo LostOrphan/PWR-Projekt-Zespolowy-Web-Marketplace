@@ -17,11 +17,16 @@ from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResp
 from rest_framework.throttling import ScopedRateThrottle
 from .models import Order
 from .serializers import OrderSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.throttling import AnonRateThrottle
 User = get_user_model()
 
 # ==========================================
 # 1. REJESTRACJA UŻYTKOWNIKA
 # ==========================================
+class ThrottledLoginView(TokenObtainPairView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'login'
 @extend_schema_view(
     post=extend_schema(
         summary="Zarejestruj nowego użytkownika",
@@ -36,6 +41,7 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = (permissions.AllowAny,)
     serializer_class = UserSerializer
+    throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'register'
 class UserProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = UserSerializer

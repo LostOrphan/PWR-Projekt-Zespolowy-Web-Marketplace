@@ -2,9 +2,11 @@ from rest_framework.test import APITestCase
 from rest_framework import status
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from .models import Category, Location, ListingStatus, Listing, DeliveryMethod, ListingImage, Order
+from django.core.cache import cache
 import io
 from PIL import Image
+
+from .models import Category, Location, ListingStatus, Listing, DeliveryMethod, ListingImage, Order
 
 User = get_user_model()
 
@@ -32,16 +34,19 @@ class MarketplaceAPITests(APITestCase):
         self.category_books = Category.objects.create(name="Książki")
         self.location = Location.objects.create(city="Wrocław", country="Polska")
         
-        # Przygotowanie statusów do testów cyklu życia ogłoszenia
-        self.status_active = ListingStatus.objects.create(name="Aktywne")
-        self.status_deleted = ListingStatus.objects.create(name="Usunięte")
-        self.status_completed = ListingStatus.objects.create(name="Zakończone")
+        # Bezpieczne przygotowanie statusów (get_or_create zapobiega błędom w bazie testowej)
+        self.status_active, _ = ListingStatus.objects.get_or_create(name="Aktywne")
+        self.status_deleted, _ = ListingStatus.objects.get_or_create(name="Usunięte")
+        self.status_completed, _ = ListingStatus.objects.get_or_create(name="Zakończone")
         
         # Przygotowanie metody dostawy
         self.delivery_paczkomat = DeliveryMethod.objects.create(
             name="Paczkomat InPost", 
             description="Dostawa do paczkomatu"
         )
+        
+        # Czyszczenie pamięci podręcznej dla testów limitów (throttling)
+        cache.clear()
 
     # ==========================================
     #           TESTY AUTORYZACJI I PROFILU
@@ -499,3 +504,66 @@ class MarketplaceAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['results'][0]['listing'], listing1.id)
+
+    # ==========================================
+    #            TESTY THROTTLINGU 
+    # ==========================================
+    def test_login_throttling(self):
+        """Test blokady logowania po 10 próbach (login: 10/minute)"""
+        # 1. Wykonujemy 10 zapytań (wszystkie powinny przejść przez blokadę,
+        # zwrócą 401 Unauthorized z powodu złego hasła, ale NIE 429)
+        for _ in range(10):
+            response = self.client.post(self.login_url, {
+                'email': 'nieistniejacy@example.com',
+                'password': 'bad_password'
+            })
+            self.assertNotEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+            
+        # 2. Jedenaste zapytanie powinno zostać zablokowane
+        response = self.client.post(self.login_url, {
+            'email': 'nieistniejacy@example.com',
+            'password': 'bad_password'
+        })
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+    def test_register_throttling(self):
+        """Test blokady rejestracji po 3 próbach (register: 3/minute)"""
+        # 1. Wykonujemy 3 poprawne żądania rejestracji
+        for i in range(3):
+            response = self.client.post(self.register_url, {
+                'email': f'nowyuser{i}@example.com',
+                'password': 'StrongPassword123!',
+                'first_name': f'User{i}'
+            })
+            # Upewniamy się, że nie zwraca kodu 429
+            self.assertNotEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+            
+        # 2. Czwarte zapytanie powinno zostać zablokowane
+        response = self.client.post(self.register_url, {
+            'email': 'nowyuser4@example.com',
+            'password': 'StrongPassword123!',
+            'first_name': 'User4'
+        })
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        
+    def test_create_offer_throttling(self):
+        """Test blokady wystawiania ogłoszeń po 10 próbach (create_offer: 10/hour)"""
+        # Autoryzujemy użytkownika zdefiniowanego w setUp
+        self.client.force_authenticate(user=self.user) 
+        
+        listing_data = {
+            'title': 'Testowe auto',
+            'description': 'Opis auta',
+            'price': '1000.00',
+            'category': self.category_tech.id, 
+            'location': self.location.id  
+        }
+
+        # 1. Tworzymy 10 ogłoszeń
+        for _ in range(10):
+            response = self.client.post(self.listings_url, listing_data)
+            self.assertNotEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+        # 2. Jedenaste ogłoszenie w ciągu tej samej godziny powinno zwrócić błąd limitu
+        response = self.client.post(self.listings_url, listing_data)
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)

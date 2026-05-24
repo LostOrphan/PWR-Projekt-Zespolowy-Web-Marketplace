@@ -5,6 +5,8 @@ from django.core.validators import MinValueValidator
 from decimal import Decimal
 from django.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator
 # Menadżer Użytkownika 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password, **extra_fields):
@@ -117,7 +119,7 @@ class ListingStatus(models.Model):
 
     def __str__(self):
         return self.name
-
+    
 # Model ogłoszeń
 class Listing(models.Model):
     # Relacja do CustomUser. settings.AUTH_USER_MODEL 
@@ -152,15 +154,24 @@ class Listing(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.price} zł"
-
+def validate_file_size(value):
+    filesize = value.size
+    if filesize > 10 * 1024 * 1024: # Limit 5MB
+        raise ValidationError("Maksymalny rozmiar pliku to 10MB")
+        
 # Model przechowywania zdjęć ogłoszeń
 class ListingImage(models.Model):
     # related_name='images' pozwala na odpytywanie: listing.images.all()
     listing = models.ForeignKey(Listing, on_delete=models.CASCADE, related_name='images')
     
     # Django samo generuje ścieżkę w folderze media/listings/images/
-    image = models.ImageField(upload_to='listings/images/')
-    
+    image = models.ImageField(
+    upload_to='listings/',
+    validators=[
+            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png']),
+            validate_file_size
+        ]
+    )
     display_order = models.PositiveSmallIntegerField(default=0)
     is_primary = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

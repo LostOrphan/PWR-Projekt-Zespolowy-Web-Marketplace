@@ -14,6 +14,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status as http_status 
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
+from rest_framework.throttling import ScopedRateThrottle
 
 User = get_user_model()
 
@@ -34,7 +35,7 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = (permissions.AllowAny,)
     serializer_class = UserSerializer
-
+    throttle_scope = 'register'
 
 # ==========================================
 # 2. SŁOWNIKI (Kategorie, Lokalizacje)
@@ -154,7 +155,13 @@ class ListingViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['category', 'location', 'status']
     search_fields = ['title', 'description']
-
+    def get_throttles(self):
+            if self.action == 'create':
+                # Przypisujemy konkretny limit ze słownika w settings.py
+                self.throttle_scope = 'create_offer'
+                return [ScopedRateThrottle()]
+            # Dla reszty akcji (list, retrieve, update) zwracamy domyślne, globalne limity
+            return super().get_throttles()
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             return [permissions.AllowAny()]

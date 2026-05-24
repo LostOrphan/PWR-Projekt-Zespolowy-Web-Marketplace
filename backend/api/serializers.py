@@ -1,7 +1,9 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from .models import Category, Location, Listing, ListingImage, ListingStatus
 from .models import Address
+from .models import Order, Listing, ListingStatus
 import django.contrib.auth.password_validation as validators
 User = get_user_model()
 
@@ -9,25 +11,63 @@ User = get_user_model()
 #       AUTORYZACJA I UŻYTKOWNIK
 # ==========================================
 class UserSerializer(serializers.ModelSerializer):
+    # Ustawiamy required=False, aby DRF nie wyrzucił błędu przed wejściem do metody validate.
+    # Bezpieczeństwo zapewnimy wewnątrz metody validate() poniżej.
     password = serializers.CharField(
         write_only=True, 
-        required=True,
+        required=False,
         validators=[validators.validate_password], 
         style={'input_type': 'password'}
     )
+
     class Meta:
         model = User
-        
         fields = ('id', 'email', 'first_name', 'last_name', 'phone_num', 'password', 'date_joined')
-        # Zabezpieczenie: API nigdy nie zwróci hasła
         extra_kwargs = {
             'date_joined': {'read_only': True}
         }
 
+    def validate(self, attrs):
+        """
+        Walidacja logiczna:
+        self.instance to obiekt z bazy. Jeśli go nie ma, znaczy że tworzymy (rejestracja).
+        """
+        # 1. Sprawdzamy czy to REJESTRACJA (brak instancji obiektu)
+        if not self.instance:
+            if 'password' not in attrs:
+                raise serializers.ValidationError({
+                    "password": "Hasło jest wymagane podczas rejestracji nowego użytkownika."
+                })
+        
+        # 2. Sprawdzamy unikalność emaila (opcjonalne, Django zazwyczaj robi to samo, 
+        # ale warto to mieć tutaj dla czytelnych komunikatów)
+        email = attrs.get('email')
+        if email and User.objects.filter(email=email).exclude(pk=getattr(self.instance, 'pk', None)).exists():
+            raise serializers.ValidationError({"email": "Użytkownik z tym adresem email już istnieje."})
+
+        return attrs
+
     def create(self, validated_data):
-        # Hasło hashowane
+        """Metoda wywoływana przy POST (Rejestracja)"""
+        # create_user automatycznie zahashuje hasło
         user = User.objects.create_user(**validated_data)
         return user
+
+    def update(self, instance, validated_data):
+        """Metoda wywoływana przy PUT/PATCH (Edycja profilu)"""
+        # Wyciągamy hasło z danych (jeśli zostało przesłane)
+        password = validated_data.pop('password', None)
+        
+        # Aktualizujemy pozostałe pola (first_name, last_name, email, phone_num)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        # Jeśli użytkownik podał nowe hasło w formularzu edycji profilu:
+        if password:
+            instance.set_password(password)
+            
+        instance.save()
+        return instance
     
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
@@ -112,3 +152,75 @@ class ListingSerializer(serializers.ModelSerializer):
             )
             
         return listing
+    def update(self, instance, validated_data):
+        # 1. Wyciągamy dane specjalne
+        delivery_methods = validated_data.pop('delivery_methods', None)
+        uploaded_images = validated_data.pop('uploaded_images', [])
+
+        # 2. Aktualizujemy podstawowe pola ogłoszenia (tytuł, opis, cena...)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # 3. Obsługa metod dostawy (ManyToMany)
+        if delivery_methods is not None:
+            instance.delivery_methods.set(delivery_methods)
+
+        # 4. Obsługa nowych zdjęć (jeśli przesłano)
+        if uploaded_images:
+            # Opcjonalnie: możesz tu zdecydować, czy stare zdjęcia zostają, czy są usuwane
+            for index, image in enumerate(uploaded_images):
+                ListingImage.objects.create(
+                    listing=instance,
+                    image=image,
+                    display_order=index, # Warto by było tu sprawdzić ostatni index istniejących zdjęć
+                    is_primary=False 
+                )
+
+        return instance
+class OrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = [
+            'id', 'listing', 'buyer', 'delivery_method', 
+            'purchase_price', 'status', 'delivery_details', 'created_at'
+        ]
+        # Te pola backend uzupełni automatycznie, więc frontend nie może ich modyfikować:
+        read_only_fields = ['buyer', 'purchase_price', 'status', 'created_at']
+
+    def validate(self, attrs):
+        listing = attrs.get('listing')
+        user = self.context['request'].user
+
+        # 1. Walidacja: Użytkownik nie może kupić własnego ogłoszenia
+        if listing.seller == user:
+            raise serializers.ValidationError({"listing": "Nie możesz kupić własnego ogłoszenia."})
+
+        # 2. Walidacja: Ogłoszenie musi być aktywne
+        if listing.status.name != "Aktywne":
+            raise serializers.ValidationError({"listing": "To ogłoszenie nie jest już dostępne do kupienia."})
+
+        return attrs
+
+    @transaction.atomic
+    def create(self, validated_data):
+        listing = validated_data['listing']
+        
+        # 1. Uzupełnienie danych, które nie przyszły z frontendu
+        validated_data['buyer'] = self.context['request'].user
+        validated_data['purchase_price'] = listing.price  # Zamrożenie ceny w zamówieniu
+        
+        # 2. Utworzenie obiektu zamówienia
+        order = super().create(validated_data)
+        
+        # 3. Zmiana statusu ogłoszenia na "Zakończone"
+        try:
+            completed_status = ListingStatus.objects.get(name="Zakończone")
+        except ListingStatus.DoesNotExist:
+            # Fallback (bezpiecznik), gdyby słownik nie był poprawnie zainicjowany
+            completed_status = ListingStatus.objects.create(name="Zakończone")
+            
+        listing.status = completed_status
+        listing.save()
+        
+        return order

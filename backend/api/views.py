@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework import generics, viewsets, permissions
 from django.contrib.auth import get_user_model
-from .models import Listing, Category, Location
+from .models import Listing, Category, Location, ListingImage
 from .serializers import (
     UserSerializer, ListingSerializer, CategorySerializer, LocationSerializer
 )
@@ -15,7 +15,8 @@ from rest_framework.response import Response
 from rest_framework import status as http_status 
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
 from rest_framework.throttling import ScopedRateThrottle
-
+from .models import Order
+from .serializers import OrderSerializer
 User = get_user_model()
 
 # ==========================================
@@ -36,7 +37,20 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = (permissions.AllowAny,)
     serializer_class = UserSerializer
     throttle_scope = 'register'
+class UserProfileView(generics.RetrieveUpdateAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
+    def get_object(self):
+        # Ten widok zawsze zwraca dane aktualnie zalogowanego użytkownika
+        return self.request.user
+
+    @extend_schema(
+        summary="Pobierz lub edytuj profil zalogowanego użytkownika",
+        description="Zwraca dane zalogowanego użytkownika (GET) lub pozwala na ich zmianę (PATCH/PUT).",
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
 # ==========================================
 # 2. SŁOWNIKI (Kategorie, Lokalizacje)
 # ==========================================
@@ -215,3 +229,54 @@ class ListingViewSet(viewsets.ModelViewSet):
                 {"error": "Podany status nie istnieje w słowniku."}, 
                 status=http_status.HTTP_400_BAD_REQUEST
             )
+    @extend_schema(
+        summary="Usuń konkretne zdjęcie z ogłoszenia",
+        description="**Wymaga autoryzacji i bycia właścicielem (IsOwner).** Usuwa wybrane zdjęcie przypisane do ogłoszenia na podstawie jego ID.",
+        responses={
+            204: OpenApiResponse(description="Zdjęcie zostało pomyślnie usunięte."),
+            401: OpenApiResponse(description="Brak poprawnego tokenu JWT."),
+            403: OpenApiResponse(description="Zabronione - nie jesteś właścicielem tego ogłoszenia."),
+            404: OpenApiResponse(description="Zdjęcie nie istnieje lub nie należy do tego ogłoszenia.")
+        }
+    )
+    # url_path pozwala na złapanie ID zdjęcia bezpośrednio z adresu URL
+    @action(detail=True, methods=['delete'], url_path=r'images/(?P<image_pk>[^/.]+)')
+    def delete_image(self, request, pk=None, image_pk=None):
+        # 1. Pobieramy ogłoszenie. Użycie get_object() automatycznie uruchamia 
+        # walidację uprawnień (IsOwnerOrReadOnly), więc nikt obcy tu nie wejdzie.
+        listing = self.get_object()
+        
+        try:
+            # 2. Szukamy zdjęcia, upewniając się, że należy ono do TEGO ogłoszenia
+            image_to_delete = ListingImage.objects.get(pk=image_pk, listing=listing)
+            
+            # 3. Usuwamy zdjęcie z bazy danych (i z dysku, jeśli masz odpowiednio 
+            # skonfigurowany model lub używasz biblioteki django-cleanup)
+            image_to_delete.delete()
+            
+            # (Opcjonalnie) Jeśli usunięte zdjęcie było główne (is_primary=True), 
+            # możesz dodać logikę ustawiającą is_primary=True dla pierwszego z pozostałych zdjęć
+            
+            return Response(status=http_status.HTTP_204_NO_CONTENT)
+            
+        except ListingImage.DoesNotExist:
+            return Response(
+                {"error": "Wskazane zdjęcie nie istnieje lub zostało już usunięte."},
+                status=http_status.HTTP_404_NOT_FOUND
+            )
+# ==========================================
+# 3. OGŁOSZENIA (Orders)
+# ==========================================
+class OrderViewSet(viewsets.ModelViewSet):
+    """
+    Zarządzanie zamówieniami (Kup Teraz oraz Historia Zakupów).
+    Dostęp tylko dla zalogowanych użytkowników.
+    """
+    serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Najważniejsza linijka dla historii zakupów!
+        # Zalogowany użytkownik po wejściu pod GET /api/orders/ 
+        # zobaczy TYLKO swoje zakupy, posortowane od najnowszego.
+        return Order.objects.filter(buyer=self.request.user).select_related('listing', 'delivery_method')

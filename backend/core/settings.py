@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'corsheaders',
     'django_filters',
+    'django_cleanup.apps.CleanupConfig',
 ]
 
 # Custom User Model

@@ -19,17 +19,22 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
-
+from django.urls import path, include
 urlpatterns = [
     path('admin/', admin.site.urls),
     
     path('api/', include('api.urls')), 
 
-    # Dla OPENAPI i swaggerUI (dokumentacja API)
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 ]
 
 # Zezwalamy serwerowi (tylko w trybie developerskim - DEBUG) na serwowanie plików multimedialnych (zdjęć)
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+if settings.DEBUG:
+    from django.contrib import admin
+    # upewnij się, że masz zaimportowany schema_view ze Swaggera
+    urlpatterns += [
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    ]

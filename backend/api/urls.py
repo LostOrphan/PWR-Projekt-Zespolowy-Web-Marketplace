@@ -8,7 +8,10 @@ from .views import (
     RegisterView, 
     ListingViewSet, 
     CategoryViewSet, 
-    LocationViewSet
+    LocationViewSet,
+    UserProfileView,
+    OrderViewSet,
+    ThrottledLoginView
 )
 
 # Inicjacja routera, który automatycznie stworzy ścieżki dla ViewSetów
@@ -16,6 +19,7 @@ router = DefaultRouter()
 router.register(r'listings', ListingViewSet, basename='listing')
 router.register(r'categories', CategoryViewSet, basename='category')
 router.register(r'locations', LocationViewSet, basename='location')
+router.register(r'orders', OrderViewSet, basename='order')
 
 urlpatterns = [
     path('', include(router.urls)),
@@ -25,6 +29,7 @@ urlpatterns = [
     
     # Autoryzacja JWT (/api/auth/login/ oraz /api/auth/refresh/)
     # Wykorzystane biblioteki simplejwt
-    path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('auth/login/', ThrottledLoginView.as_view(), name='token_obtain_pair'),
     path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('profile/', UserProfileView.as_view(), name='user-profile'),
 ]

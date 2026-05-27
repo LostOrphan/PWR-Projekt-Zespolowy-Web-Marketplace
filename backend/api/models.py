@@ -5,7 +5,8 @@ from django.core.validators import MinValueValidator
 from decimal import Decimal
 from django.db import models
 from django.conf import settings
-
+from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator
 # Menadżer Użytkownika 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password, **extra_fields):
@@ -118,7 +119,7 @@ class ListingStatus(models.Model):
 
     def __str__(self):
         return self.name
-
+    
 # Model ogłoszeń
 class Listing(models.Model):
     # Relacja do CustomUser. settings.AUTH_USER_MODEL 
@@ -153,15 +154,24 @@ class Listing(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.price} zł"
-
+def validate_file_size(value):
+    filesize = value.size
+    if filesize > 10 * 1024 * 1024: # Limit 5MB
+        raise ValidationError("Maksymalny rozmiar pliku to 10MB")
+        
 # Model przechowywania zdjęć ogłoszeń
 class ListingImage(models.Model):
     # related_name='images' pozwala na odpytywanie: listing.images.all()
     listing = models.ForeignKey(Listing, on_delete=models.CASCADE, related_name='images')
     
     # Django samo generuje ścieżkę w folderze media/listings/images/
-    image = models.ImageField(upload_to='listings/images/')
-    
+    image = models.ImageField(
+    upload_to='listings/',
+    validators=[
+            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png']),
+            validate_file_size
+        ]
+    )
     display_order = models.PositiveSmallIntegerField(default=0)
     is_primary = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -184,13 +194,57 @@ class DeliveryMethod(models.Model):
 # Model zamowien
 
 class Order(models.Model):
-    # Jedno ogłoszenie może mieć tylko jedno zamówienie
-    listing = models.OneToOneField(Listing, on_delete=models.RESTRICT, related_name='order')
-    buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='orders')
-    delivery_method = models.ForeignKey(DeliveryMethod, on_delete=models.RESTRICT)
+    # Klasa pomocnicza do statusów zamówienia
+    class OrderStatus(models.TextChoices):
+        NEW = 'NEW', 'Nowe'
+        PAID = 'PAID', 'Opłacone'
+        SHIPPED = 'SHIPPED', 'Wysłane'
+        COMPLETED = 'COMPLETED', 'Zakończone'
+        CANCELLED = 'CANCELLED', 'Anulowane'
+
+    # Relacje
+    listing = models.OneToOneField(
+        Listing, 
+        on_delete=models.RESTRICT, 
+        related_name='order'
+    )
+    buyer = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='orders'
+    )
+    delivery_method = models.ForeignKey(
+        DeliveryMethod, 
+        on_delete=models.RESTRICT
+    )
+
+    # NOWE POLE: Cena w momencie zakupu. 
+    # To kluczowe, by historia zakupów nie zmieniała się, gdy sprzedawca zmieni cenę w ogłoszeniu.
+    purchase_price = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2,
+        help_text="Cena ogłoszenia w momencie kliknięcia 'Kup teraz'"
+    )
+
+    # NOWE POLE: Status zamówienia
+    status = models.CharField(
+        max_length=20,
+        choices=OrderStatus.choices,
+        default=OrderStatus.NEW
+    )
+
+    delivery_details = models.TextField(
+        blank=True, 
+        null=True,
+        help_text="Dane adresowe, numer paczkomatu itp."
+    )
     
-    delivery_details = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        verbose_name = "Zamówienie"
+        verbose_name_plural = "Zamówienia"
+        ordering = ['-created_at']
+
     def __str__(self):
-        return f"Zamówienie {self.id} na ogłoszenie: {self.listing.title}"
+        return f"Zamówienie {self.id} [{self.get_status_display()}] - {self.listing.title}"

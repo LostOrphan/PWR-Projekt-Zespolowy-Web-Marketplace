@@ -129,6 +129,7 @@ width: 30%;
 .content-wrapper {
   flex: 1;
   display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
@@ -258,7 +259,7 @@ width: 30%;
   text-align: center;
   border-top: 2px solid #ddd9cc;
   font-size: 14px;
-  margin-top: auto;
+  flex: 0 0 auto;
 }
 
 .app-footer p {

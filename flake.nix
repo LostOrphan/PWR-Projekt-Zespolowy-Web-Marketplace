@@ -44,6 +44,7 @@
                 django-cors-headers
                 django-filter
                 djangorestframework-simplejwt
+                django-cleanup
                 drf-spectacular
 
                 psycopg2

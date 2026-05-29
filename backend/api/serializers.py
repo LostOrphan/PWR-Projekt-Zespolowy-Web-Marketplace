@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from .models import Category, Location, Listing, ListingImage, ListingStatus
+from .models import Category, Location, Listing, ListingImage, ListingStatus, DeliveryMethod
 from .models import Address
 from .models import Order, Listing, ListingStatus
 import django.contrib.auth.password_validation as validators
@@ -88,6 +88,11 @@ class LocationSerializer(serializers.ModelSerializer):
         model = Location
         fields = '__all__'
 
+class DeliveryMethodSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DeliveryMethod
+        fields = '__all__'
+
 class ListingStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = ListingStatus
@@ -117,6 +122,7 @@ class ListingSerializer(serializers.ModelSerializer):
     images = ListingImageSerializer(many=True, read_only=True)
     seller = SellerSerializer(read_only=True)
     location = LocationSerializer(read_only=True)
+    category = CategorySerializer(read_only=True)
     
     # Dodatkowe pole do przyjmowania plików zdjęć z frontendu (FormData)
     uploaded_images = serializers.ListField(

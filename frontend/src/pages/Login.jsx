@@ -9,7 +9,7 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [cookies, setCookie] = useCookies(["username", "token"])
+  const [cookies, setCookie] = useCookies(["username", "token", "refresh_token"])
   const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
@@ -22,6 +22,9 @@ export default function Login() {
       if (result.success) {
         setCookie("username", email, { path: "/" })
         setCookie("token", result.data.access, { path: "/" })
+        if (result.data.refresh) {
+          setCookie("refresh_token", result.data.refresh, { path: "/" })
+        }
         navigate('/')
       } else {
         setError(result.error)

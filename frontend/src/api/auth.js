@@ -53,8 +53,34 @@ export const loginUser = async (credentials) => {
   }
 }
 
+export const refreshToken = async (refreshToken) => {
+  try {
+    const response = await fetch(API_ENDPOINTS.refresh, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        refresh: refreshToken,
+      }),
+    })
+
+    const data = await response.json()
+
+    if (response.status === 200) {
+      return { success: true, data }
+    } else {
+      return { success: false, error: 'Nie można odświeżyć tokenu' }
+    }
+  } catch (err) {
+    console.error('Refresh token error:', err)
+    return { success: false, error: 'Błąd połączenia' }
+  }
+}
+
 export const logoutUser = (removeCookie) => {
   removeCookie('username', { path: '/' })
   removeCookie('token', { path: '/' })
+  removeCookie('refresh_token', { path: '/' })
   return { success: true }
 }

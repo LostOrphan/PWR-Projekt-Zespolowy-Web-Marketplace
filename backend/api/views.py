@@ -7,7 +7,7 @@ from .serializers import (
 )
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from .permissions import IsListingOwnerOrReadOnly, IsOwnerOrReadOnly
-from api.models import ListingStatus
+from .models import ListingStatus
 from rest_framework import filters  
 from django_filters.rest_framework import DjangoFilterBackend 
 from rest_framework.decorators import action
@@ -181,6 +181,9 @@ class ListingViewSet(viewsets.ModelViewSet):
                 self.throttle_scope = 'create_offer'
                 return [ScopedRateThrottle()]
             # Dla reszty akcji (list, retrieve, update) zwracamy domyślne, globalne limity
+            elif self.action == 'reveal_phone':
+                self.throttle_scope = 'phoneNumReveal'
+                return [ScopedRateThrottle()]
             return super().get_throttles()
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
@@ -270,6 +273,29 @@ class ListingViewSet(viewsets.ModelViewSet):
                 {"error": "Wskazane zdjęcie nie istnieje lub zostało już usunięte."},
                 status=http_status.HTTP_404_NOT_FOUND
             )
+    @extend_schema(
+        summary="Odkryj pełny numer telefonu sprzedawcy",
+        description="**Wymaga autoryzacji (Token JWT).** Zwraca pełny, niezamaskowany numer telefonu sprzedawcy przypisanego do danego ogłoszenia. Używane na frontendzie po kliknięciu 'Pokaż numer'.",
+        responses={
+            200: OpenApiResponse(description="Zwraca pełny numer telefonu, np. {\"phone_number\": \"123456789\"}."),
+            401: OpenApiResponse(description="Brak poprawnego tokenu JWT (użytkownik niezalogowany)."),
+            404: OpenApiResponse(description="Ogłoszenie nie istnieje lub sprzedawca nie podał numeru telefonu.")
+        }
+    )
+    @action(detail=True, methods=['get'], url_path='phone', permission_classes=[permissions.IsAuthenticated])
+    def reveal_phone(self, request, pk=None):
+        listing = self.get_object()
+
+        # Pobieramy pełny numer telefonu z modelu CustomUser
+        full_phone = listing.seller.phone_num
+        
+        if not full_phone:
+            return Response(
+                {"error": "Ten sprzedawca nie udostępnił swojego numeru telefonu."}, 
+                status=http_status.HTTP_404_NOT_FOUND
+            )
+            
+        return Response({"phone_number": full_phone}, status=http_status.HTTP_200_OK)
 # ==========================================
 # 3. OGŁOSZENIA (Orders)
 # ==========================================

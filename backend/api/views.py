@@ -180,6 +180,9 @@ class ListingViewSet(viewsets.ModelViewSet):
                 # Przypisujemy konkretny limit ze słownika w settings.py
                 self.throttle_scope = 'create_offer'
                 return [ScopedRateThrottle()]
+            elif self.action == 'reveal_phone':
+                self.throttle_scope = 'phoneNumReveal'
+                return [ScopedRateThrottle()]
             # Dla reszty akcji (list, retrieve, update) zwracamy domyślne, globalne limity
             return super().get_throttles()
     def get_permissions(self):

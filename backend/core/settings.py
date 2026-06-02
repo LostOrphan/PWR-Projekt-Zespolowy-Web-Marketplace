@@ -166,6 +166,7 @@ REST_FRAMEWORK = {
         'user': '5000/day',   
         'register': '3/minute',
         'create_offer': '10/hour', 
+        'phoneNumReveal': '20/minute';
     }
 }
 SPECTACULAR_SETTINGS = {

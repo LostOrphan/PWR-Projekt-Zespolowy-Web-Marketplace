@@ -118,6 +118,8 @@ export default function Home() {
             </button>
             {userDropdownOpen && (
               <div className="dropdown-menu">
+                <button onClick={() => navigate('/mylistings')} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Moje ogłoszenia</button>
+                <button onClick={() => navigate('/purchase-history')} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Historia zakupów</button>
                 <button onClick={() => navigate('/addproduct')} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Dodaj ogłoszenie</button>
                 <button onClick={handleLogout} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Wyloguj się</button>
               </div>
@@ -181,12 +183,12 @@ export default function Home() {
               )}
             </div>
           </div>
-
-          {/* Footer */}
-          <footer className="app-footer">
-            <p>&copy; 2026 Aplikacja Marketplace</p>
-          </footer>
         </main>
+
+        {/* Footer */}
+        <footer className="app-footer">
+          <p>&copy; 2026 Aplikacja Marketplace</p>
+        </footer>
       </div>
     </div>
   )

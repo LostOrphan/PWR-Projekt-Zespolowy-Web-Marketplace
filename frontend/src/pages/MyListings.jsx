@@ -1,62 +1,47 @@
 import '../styles/Home.css'
 import { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useCookies } from 'react-cookie'
 import { logoutUser } from '../api/auth'
-import { getCategories, searchListings } from '../api/listings'
+import { getCategories, getUserListings } from '../api/listings'
 import userAvatar from '../assets/user.png'
 
-export default function Search() {
+export default function MyListings() {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
   const [categories, setCategories] = useState([])
-  const [filteredListings, setFilteredListings] = useState([])
-  const [selectedCategory, setSelectedCategory] = useState(null)
+  const [listings, setListings] = useState([])
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
   const [cookies, , removeCookie] = useCookies(['username', 'token'])
-  const searchQuery = searchParams.get('q') || ''
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
-      
+
       const categoriesResult = await getCategories()
       if (categoriesResult.success) {
         setCategories(categoriesResult.data)
       }
 
-      if (searchQuery.trim()) {
-        const filters = selectedCategory !== null ? { category: selectedCategory } : {}
-        const result = await searchListings(searchQuery, filters, true)
-        if (result.success) {
-          setFilteredListings(result.data)
-        }
+      if (!cookies.token) {
+        navigate('/login')
+        return
       }
-      
+
+      const listingsResult = await getUserListings(cookies.token)
+      if (listingsResult.success) {
+        setListings(listingsResult.data)
+      }
+
       setLoading(false)
     }
     fetchData()
-  }, [searchQuery, selectedCategory])
+  }, [cookies.token, navigate])
 
   const handleLogout = () => {
     logoutUser(removeCookie)
     navigate('/login')
-  }
-
-  const handleCategoryFilter = (categoryId) => {
-    setSelectedCategory(categoryId)
-    setDropdownOpen(false)
-  }
-
-  const handleSearch = (e) => {
-    e.preventDefault()
-    const formData = new FormData(e.target)
-    const query = formData.get('search')
-    if (query.trim()) {
-      setSearchParams({ q: query })
-    }
   }
 
   return (
@@ -75,7 +60,10 @@ export default function Search() {
               {dropdownOpen && (
                 <div className="dropdown-menu">
                   <button 
-                    onClick={() => handleCategoryFilter(null)}
+                    onClick={() => {
+                      navigate('/')
+                      setDropdownOpen(false)
+                    }}
                     className="dropdown-link"
                     style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}
                   >
@@ -83,7 +71,10 @@ export default function Search() {
                   </button>
                   {categories.map((category) => (
                     <button 
-                      onClick={() => handleCategoryFilter(category.id)}
+                      onClick={() => {
+                        navigate('/')
+                        setDropdownOpen(false)
+                      }}
                       key={category.id} 
                       className="dropdown-link"
                       style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}
@@ -95,17 +86,9 @@ export default function Search() {
               )}
             </div>
           </div>
-          <div className='header-logo-item'><h1>Aplikacja Marketplace</h1></div>
+          <div className='header-logo-item'><h1 onClick={() => navigate('/')}>Aplikacja Marketplace</h1></div>
           <div className='header-item right-side'>
             <div>
-              {!cookies.username && (
-                <div className="user-section">
-                  <button
-                    onClick={() => navigate('/login')}
-                    className="dropdown-btn"
-                  >Zaloguj się</button>
-                </div>
-              )}
               {cookies.username && (
                 <div className="user-section">
                   <img src={userAvatar} alt="User avatar" className="user-avatar" />
@@ -117,7 +100,6 @@ export default function Search() {
                   </button>
                   {userDropdownOpen && (
                     <div className="dropdown-menu">
-                      <button onClick={() => navigate('/mylistings')} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Moje ogłoszenia</button>
                       <button onClick={() => navigate('/purchase-history')} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Historia zakupów</button>
                       <button onClick={() => navigate('/addproduct')} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Dodaj ogłoszenie</button>
                       <button onClick={handleLogout} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Wyloguj się</button>
@@ -134,60 +116,45 @@ export default function Search() {
       <div className="content-wrapper">
         {/* Main content */}
         <main className="main-content">
-          {/* Search Bar with Back Button */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '40px', justifyContent: 'center' }}>
-            <button 
-              onClick={() => navigate(-1)}
-              style={{
-                backgroundColor: '#ffffff',
-                color: '#333',
-                border: '1px solid #ddd9cc',
-                padding: '16px 24px',
-                borderRadius: '20px',
-                cursor: 'pointer',
-                fontSize: '16px',
-                fontWeight: '500',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                transition: 'background-color 0.3s, border-color 0.3s',
-                whiteSpace: 'nowrap',
-                flexShrink: 0
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = '#f9f8f5'
-                e.target.style.borderColor = '#c9c2b8'
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = '#ffffff'
-                e.target.style.borderColor = '#ddd9cc'
-              }}
-              title="Wróć do poprzedniej strony"
-            >
-              ← Wróć
-            </button>
-            <form onSubmit={handleSearch} className="search-bar-container" style={{ flex: 1, margin: 0 }}>
-              <input
-                type="text"
-                className="search-bar"
-                placeholder="Szukaj produktów..."
-                name="search"
-                defaultValue={searchQuery}
-              />
-            </form>
-          </div>
+          <button 
+            onClick={() => navigate(-1)}
+            style={{
+              backgroundColor: '#ffffff',
+              color: '#333',
+              border: '1px solid #ddd9cc',
+              padding: '12px 20px',
+              borderRadius: '20px',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              transition: 'background-color 0.3s, border-color 0.3s',
+              marginBottom: '1.5rem',
+              width: 'fit-content'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#f9f8f5'
+              e.target.style.borderColor = '#c9c2b8'
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = '#ffffff'
+              e.target.style.borderColor = '#ddd9cc'
+            }}
+            title="Wróć do poprzedniej strony"
+          >
+            ← Wróć
+          </button>
 
           {/* Listings Section */}
           <div className="category-section">
-            <h2 className="category-title">
-              Wyniki wyszukiwania dla: "{searchQuery}"
-              {selectedCategory && ` - ${categories.find(cat => cat.id === selectedCategory)?.name || 'Kategoria'}`}
-            </h2>
+            <h2 className="category-title">Moje ogłoszenia</h2>
             <div className="product-row">
               {loading ? (
                 <p>Wczytywanie...</p>
-              ) : filteredListings.length > 0 ? (
-                filteredListings.map((listing) => (
+              ) : listings.length > 0 ? (
+                listings.map((listing) => (
                   <div 
                     key={listing.id} 
                     className="product-card" 
@@ -207,16 +174,20 @@ export default function Search() {
                     <div className="product-info">
                       <h3>{listing.title}</h3>
                       <p className="product-price">{listing.price} PLN</p>
-                      <p className="product-description">{listing.description.substring(0, 100)}...</p>
                     </div>
                   </div>
                 ))
               ) : (
-                <p>Brak wyników wyszukiwania.</p>
+                <p>Nie masz żadnych ogłoszeń. <button onClick={() => navigate('/addproduct')} style={{backgroundColor: 'transparent', border: 'none', color: '#007bff', cursor: 'pointer', textDecoration: 'underline'}}>Dodaj pierwsze ogłoszenie</button></p>
               )}
             </div>
           </div>
         </main>
+
+        {/* Footer */}
+        <footer className="app-footer">
+          <p>&copy; 2026 Aplikacja Marketplace</p>
+        </footer>
       </div>
     </div>
   )

@@ -56,6 +56,19 @@ export default function ProductDetail() {
     navigate('/login')
   }
 
+  const censorEmail = (email) => {
+    if (!email) return ''
+    const atIndex = email.indexOf('@')
+    if (atIndex <= 2) return email.substring(0, 2) + '***@***'
+    return email.substring(0, 2) + '***' + email.substring(atIndex)
+  }
+
+  const censorPhone = (phone) => {
+    if (!phone) return ''
+    if (phone.length <= 2) return '**'
+    return phone.substring(0, 2) + '***' + (phone.length > 5 ? phone.substring(phone.length - 2) : '')
+  }
+
   return (
     <div className="app-container">
       {/* Header */}
@@ -110,6 +123,8 @@ export default function ProductDetail() {
                   </button>
                   {userDropdownOpen && (
                     <div className="dropdown-menu">
+                      <button onClick={() => navigate('/mylistings')} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Moje ogłoszenia</button>
+                      <button onClick={() => navigate('/purchase-history')} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Historia zakupów</button>
                       <button onClick={() => navigate('/addproduct')} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Dodaj ogłoszenie</button>
                       <button onClick={handleLogout} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Wyloguj się</button>
                     </div>
@@ -123,7 +138,10 @@ export default function ProductDetail() {
       {/* Main content area */}
       <div className="content-wrapper">
         <main className="main-content">
-          <button onClick={() => navigate(-1)} className="back-btn">← Wróć</button>
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+            <button onClick={() => navigate('/')} className="back-btn">Strona Główna</button>
+            <button onClick={() => navigate(-1)} className="back-btn">← Wróć</button>
+          </div>
           
           {loading ? (
             <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1}}>
@@ -131,14 +149,11 @@ export default function ProductDetail() {
             </div>
           ) : listing ? (
             <div className="product-detail-wrapper">
-              {/* Product Image Section - Left Panel */}
-              <div className="product-image-panel">
+              {/* Left: Image Gallery */}
+              <div className="product-gallery">
                 <div className="product-image-container">
                   {listing.images && listing.images.length > 0 ? (
                     <>
-                      {listing.images.length > 1 && (
-                        <button onClick={handlePreviousImage} className="image-nav-btn prev-btn">←</button>
-                      )}
                       <img 
                         src={listing.images[currentImageIndex].image} 
                         alt={listing.title} 
@@ -148,7 +163,11 @@ export default function ProductDetail() {
                         }}
                       />
                       {listing.images.length > 1 && (
-                        <button onClick={handleNextImage} className="image-nav-btn next-btn">→</button>
+                        <>
+                          <button onClick={handlePreviousImage} className="image-nav-btn prev-btn">←</button>
+                          <button onClick={handleNextImage} className="image-nav-btn next-btn">→</button>
+                          <div className="image-counter">{currentImageIndex + 1} / {listing.images.length}</div>
+                        </>
                       )}
                     </>
                   ) : (
@@ -160,48 +179,100 @@ export default function ProductDetail() {
                   )}
                 </div>
                 {listing.images && listing.images.length > 1 && (
-                  <div className="image-counter">
-                    {currentImageIndex + 1} / {listing.images.length}
+                  <div className="image-thumbnails">
+                    {listing.images.map((img, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setCurrentImageIndex(idx)}
+                        className={`thumbnail ${currentImageIndex === idx ? 'active' : ''}`}
+                      >
+                        <img src={img.image} alt={`Thumbnail ${idx}`} />
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
 
-              {/* Product Info Section - Right Panel */}
+              {/* Right: Product Info */}
               <div className="product-info-panel">
-                <h1 className="product-detail-name">{listing.title}</h1>
-               
-                <div className="product-price">
-                  <span className="price">{listing.price} zł</span>
+                <h1 className="product-title">{listing.title}</h1>
+                
+                <div className="product-price-section">
+                  <span className="price-label">Cena:</span>
+                  <span className="price">{listing.price} PLN</span>
                 </div>
 
-                <div className="product-description">
-                  <h2>Opis produktu</h2>
+                {/* Key Info Cards */}
+                <div className="info-cards">
+                  {listing.location && (
+                    <div className="info-card">
+                      <h3>Lokalizacja</h3>
+                      <p>{listing.location.city}</p>
+                    </div>
+                  )}
+                  
+                  {listing.category && (
+                    <div className="info-card">
+                      <h3>Kategoria</h3>
+                      <p>{listing.category.name}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Description */}
+                <div className="description-section">
+                  <h2>Opis</h2>
                   <p>{listing.description || 'Brak opisu'}</p>
                 </div>
 
-                {listing.location && (
-                  <div className="product-location">
-                    <h2>Lokalizacja</h2>
-                    <p>{listing.location.city}</p>
-                  </div>
-                )}
-
-                <div className="seller-info">
-                  <h2>Informacje o sprzedawcy</h2>
+                {/* Seller Info */}
+                <div className="seller-section">
+                  <h2>Sprzedawca</h2>
                   <div className="seller-card">
                     <img src={userAvatar} alt="Seller" className="seller-avatar" />
                     <div className="seller-details">
                       <p className="seller-name">{listing.seller.first_name} {listing.seller.last_name}</p>
-                      <p className="seller-email">{listing.seller.email}</p>
+                      <p className="seller-contact">
+                        <strong>Email:</strong> {censorEmail(listing.seller.email)}
+                      </p>
                       {listing.seller.phone_num && (
-                        <p className="seller-phone">{listing.seller.phone_num}</p>
+                        <p className="seller-contact">
+                          <strong>Telefon:</strong> {censorPhone(listing.seller.phone_num)}
+                        </p>
                       )}
                     </div>
                   </div>
                 </div>
 
-                <div className="product-actions">
-                  <button className="buy-now-btn">Kup teraz</button>
+                {/* Actions */}
+                <div className="action-buttons">
+                  {listing.seller.email === cookies.username ? (
+                    <>
+                      <button 
+                        onClick={() => navigate(`/product/${listing.id}/edit`)}
+                        className="btn-primary"
+                      >
+                        Edytuj ogłoszenie
+                      </button>
+                      <button className="btn-secondary">Zarządzaj ogłoszeniem</button>
+                    </>
+                  ) : (
+                    <>
+                      <button 
+                        onClick={() => {
+                          if (cookies.username) {
+                            navigate(`/product/${listing.id}/checkout`)
+                          } else {
+                            navigate('/login')
+                          }
+                        }}
+                        className="btn-primary"
+                      >
+                        Kup teraz
+                      </button>
+                      <button className="btn-secondary">Skontaktuj się ze sprzedawcą</button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -210,12 +281,12 @@ export default function ProductDetail() {
               <p>Ogłoszenie nie znalezione</p>
             </div>
           )}
-
-          {/* Footer */}
-          <footer className="app-footer">
-            <p>&copy; 2026 Aplikacja Marketplace</p>
-          </footer>
         </main>
+
+        {/* Footer */}
+        <footer className="app-footer">
+          <p>&copy; 2026 Aplikacja Marketplace</p>
+        </footer>
       </div>
     </div>
   )

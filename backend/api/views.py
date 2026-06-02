@@ -1,9 +1,9 @@
 from django.shortcuts import render
 from rest_framework import generics, viewsets, permissions
 from django.contrib.auth import get_user_model
-from .models import Listing, Category, Location, ListingImage, DeliveryMethod
+from .models import Listing, Category, Location, ListingImage
 from .serializers import (
-    UserSerializer, ListingSerializer, CategorySerializer, LocationSerializer, DeliveryMethodSerializer
+    UserSerializer, ListingSerializer, CategorySerializer, LocationSerializer
 )
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from .permissions import IsListingOwnerOrReadOnly, IsOwnerOrReadOnly
@@ -106,12 +106,6 @@ class LocationViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = (permissions.AllowAny,)
 
 
-class DeliveryMethodViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = DeliveryMethod.objects.all()
-    serializer_class = DeliveryMethodSerializer
-    permission_classes = (permissions.AllowAny,)
-
-
 # ==========================================
 # 3. OGŁOSZENIA (Listingi)
 # ==========================================
@@ -209,20 +203,7 @@ class ListingViewSet(viewsets.ModelViewSet):
         return qs.exclude(status__name="Usunięte")
 
     @extend_schema(
-        summary="Pobierz moje ogłoszenia",
-        description="**Wymaga autoryzacji (Token JWT).** Zwraca listę wszystkich ogłoszeń zalogowanego użytkownika, posortowane od najnowszego.",
-        responses={
-            200: ListingSerializer(many=True),
-            401: OpenApiResponse(description="Brak poprawnego tokenu JWT.")
-        }
-    )
-    @action(detail=False, methods=['get'])
-    def my_listings(self, request):
-        user_listings = self.get_queryset().filter(seller=request.user).order_by('-created_at')
-        serializer = self.get_serializer(user_listings, many=True)
-        return Response(serializer.data)
-
-    @extend_schema(
+        summary="Zmień status ogłoszenia",
         description="**Wymaga autoryzacji i bycia właścicielem (IsOwner).** Szybki endpoint do zmiany samego statusu. Oczekuje JSON-a: `{\"status\": \"Nowa nazwa statusu\"}`.",
         responses={
             200: OpenApiResponse(description="Pomyślnie zmieniono status ogłoszenia."),
@@ -289,6 +270,29 @@ class ListingViewSet(viewsets.ModelViewSet):
                 {"error": "Wskazane zdjęcie nie istnieje lub zostało już usunięte."},
                 status=http_status.HTTP_404_NOT_FOUND
             )
+    @extend_schema(
+        summary="Odkryj pełny numer telefonu sprzedawcy",
+        description="**Wymaga autoryzacji (Token JWT).** Zwraca pełny, niezamaskowany numer telefonu sprzedawcy przypisanego do danego ogłoszenia. Używane na frontendzie po kliknięciu 'Pokaż numer'.",
+        responses={
+            200: OpenApiResponse(description="Zwraca pełny numer telefonu, np. {\"phone_number\": \"123456789\"}."),
+            401: OpenApiResponse(description="Brak poprawnego tokenu JWT (użytkownik niezalogowany)."),
+            404: OpenApiResponse(description="Ogłoszenie nie istnieje lub sprzedawca nie podał numeru telefonu.")
+        }
+    )
+    @action(detail=True, methods=['get'], url_path='phone', permission_classes=[permissions.IsAuthenticated])
+    def reveal_phone(self, request, pk=None):
+        listing = self.get_object()
+        
+        # Pobieramy pełny numer telefonu z modelu CustomUser
+        full_phone = listing.seller.phone_num
+        
+        if not full_phone:
+            return Response(
+                {"error": "Ten sprzedawca nie udostępnił swojego numeru telefonu."}, 
+                status=http_status.HTTP_404_NOT_FOUND
+            )
+            
+        return Response({"phone_number": full_phone}, status=http_status.HTTP_200_OK)
 # ==========================================
 # 3. OGŁOSZENIA (Orders)
 # ==========================================

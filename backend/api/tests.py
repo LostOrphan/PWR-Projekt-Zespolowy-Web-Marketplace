@@ -20,12 +20,13 @@ class MarketplaceAPITests(APITestCase):
         self.categories_url = '/api/categories/'
         self.orders_url = '/api/orders/'
 
-        # Przygotowanie danych testowych użytkownika
+        # Przygotowanie danych testowych użytkownika (dodano pole phone_num)
         self.user_data = {
             "email": "jan.kowalski@student.pwr.edu.pl",
             "password": "SuperTajneHaslo123!",
             "first_name": "Jan",
-            "last_name": "Kowalski"
+            "last_name": "Kowalski",
+            "phone_num": "123456789"  # <--- NOWOŚĆ: Dodany numer telefonu sprzedawcy
         }
         self.user = User.objects.create_user(**self.user_data)
 
@@ -191,6 +192,68 @@ class MarketplaceAPITests(APITestCase):
         self.assertIsInstance(response.data['seller'], dict)
         self.assertEqual(response.data['seller']['first_name'], "Jan")
         self.assertEqual(response.data['seller']['email'], "jan.kowalski@student.pwr.edu.pl")
+
+    # ----------------------------------------------------------------------
+    # NOWE TESTY POLITYKI NUMERÓW TELEFONÓW
+    # ----------------------------------------------------------------------
+    def test_listing_shows_masked_phone_number_by_default(self):
+        """Domyślny GET szczegółów ogłoszenia powinien zwracać maskowany numer telefonu"""
+        listing = Listing.objects.create(
+            seller=self.user, category=self.category_tech, status=self.status_active,
+            title="Sofa", price="400.00"
+        )
+        url = f"{self.listings_url}{listing.id}/"
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('phone_number', response.data)
+        # Zgodnie z polityką: pierwsze 3 znaki + maska
+        self.assertEqual(response.data['phone_number'], "123-xxx-xxx")
+
+    def test_authenticated_user_can_reveal_full_phone_number(self):
+        """Zalogowany użytkownik powinien otrzymać pełny numer telefonu z dedykowanego endpointu"""
+        listing = Listing.objects.create(
+            seller=self.user, category=self.category_tech, status=self.status_active,
+            title="Sofa", price="400.00"
+        )
+        # Tworzymy innego użytkownika jako osobę przeglądającą i logujemy go
+        buyer = User.objects.create_user(email="buyer.test@student.pwr.edu.pl", password="BuyerPassword1!")
+        self.client.force_authenticate(user=buyer)
+        
+        url = f"{self.listings_url}{listing.id}/phone/"
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['phone_number'], "123456789")
+
+    def test_unauthenticated_user_cannot_reveal_phone_number(self):
+        """Niezalogowany użytkownik przy próbie odkrycia numeru powinien otrzymać błąd 401"""
+        listing = Listing.objects.create(
+            seller=self.user, category=self.category_tech, status=self.status_active,
+            title="Sofa", price="400.00"
+        )
+        url = f"{self.listings_url}{listing.id}/phone/"
+        response = self.client.get(url) # Bez force_authenticate
+        
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_reveal_phone_number_returns_404_if_seller_has_no_phone(self):
+        """Endpoint powinien zwrócić błąd 404, jeśli sprzedawca nie posiada zapisanego numeru"""
+        user_without_phone = User.objects.create_user(
+            email="no.phone@student.pwr.edu.pl", password="Password123!", first_name="No", last_name="Phone"
+        )
+        listing = Listing.objects.create(
+            seller=user_without_phone, category=self.category_tech, status=self.status_active,
+            title="Brak numeru", price="10.00"
+        )
+        self.client.force_authenticate(user=self.user)
+        
+        url = f"{self.listings_url}{listing.id}/phone/"
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertIn("error", response.data)
+    # ----------------------------------------------------------------------
 
     def test_listing_filtering_by_category(self):
         """Test filtrowania ogłoszeń po ID kategorii"""
@@ -510,8 +573,6 @@ class MarketplaceAPITests(APITestCase):
     # ==========================================
     def test_login_throttling(self):
         """Test blokady logowania po 10 próbach (login: 10/minute)"""
-        # 1. Wykonujemy 10 zapytań (wszystkie powinny przejść przez blokadę,
-        # zwrócą 401 Unauthorized z powodu złego hasła, ale NIE 429)
         for _ in range(10):
             response = self.client.post(self.login_url, {
                 'email': 'nieistniejacy@example.com',
@@ -519,7 +580,6 @@ class MarketplaceAPITests(APITestCase):
             })
             self.assertNotEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
             
-        # 2. Jedenaste zapytanie powinno zostać zablokowane
         response = self.client.post(self.login_url, {
             'email': 'nieistniejacy@example.com',
             'password': 'bad_password'
@@ -528,17 +588,14 @@ class MarketplaceAPITests(APITestCase):
 
     def test_register_throttling(self):
         """Test blokady rejestracji po 3 próbach (register: 3/minute)"""
-        # 1. Wykonujemy 3 poprawne żądania rejestracji
         for i in range(3):
             response = self.client.post(self.register_url, {
                 'email': f'nowyuser{i}@example.com',
                 'password': 'StrongPassword123!',
                 'first_name': f'User{i}'
             })
-            # Upewniamy się, że nie zwraca kodu 429
             self.assertNotEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
             
-        # 2. Czwarte zapytanie powinno zostać zablokowane
         response = self.client.post(self.register_url, {
             'email': 'nowyuser4@example.com',
             'password': 'StrongPassword123!',
@@ -548,7 +605,6 @@ class MarketplaceAPITests(APITestCase):
         
     def test_create_offer_throttling(self):
         """Test blokady wystawiania ogłoszeń po 10 próbach (create_offer: 10/hour)"""
-        # Autoryzujemy użytkownika zdefiniowanego w setUp
         self.client.force_authenticate(user=self.user) 
         
         listing_data = {
@@ -559,11 +615,9 @@ class MarketplaceAPITests(APITestCase):
             'location': self.location.id  
         }
 
-        # 1. Tworzymy 10 ogłoszeń
         for _ in range(10):
             response = self.client.post(self.listings_url, listing_data)
             self.assertNotEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
 
-        # 2. Jedenaste ogłoszenie w ciągu tej samej godziny powinno zwrócić błąd limitu
         response = self.client.post(self.listings_url, listing_data)
         self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from .models import Category, Location, Listing, ListingImage, ListingStatus, DeliveryMethod
+from .models import Category, Location, Listing, ListingImage, ListingStatus
 from .models import Address
 from .models import Order, Listing, ListingStatus
 import django.contrib.auth.password_validation as validators
@@ -88,11 +88,6 @@ class LocationSerializer(serializers.ModelSerializer):
         model = Location
         fields = '__all__'
 
-class DeliveryMethodSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DeliveryMethod
-        fields = '__all__'
-
 class ListingStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = ListingStatus
@@ -121,9 +116,7 @@ class ListingSerializer(serializers.ModelSerializer):
     # Zagnieżdżoną lista w formacie JSON (tylko do odczytu)
     images = ListingImageSerializer(many=True, read_only=True)
     seller = SellerSerializer(read_only=True)
-    location = LocationSerializer(read_only=True)
-    category = CategorySerializer(read_only=True)
-    
+    phone_number = serializers.SerializerMethodField()
     # Dodatkowe pole do przyjmowania plików zdjęć z frontendu (FormData)
     uploaded_images = serializers.ListField(
         child=serializers.ImageField(max_length=1000000, allow_empty_file=False, use_url=False),
@@ -136,12 +129,29 @@ class ListingSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'seller', 'category', 'location', 'status', 
             'title', 'description', 'price', 
+            'phone_number',
             'street', 'building_number', 'apartment_number', 
             'delivery_methods',
             'created_at', 'updated_at', 
             'images', 'uploaded_images'
         )
         read_only_fields = ('seller', 'status', 'created_at', 'updated_at')
+    def get_phone_number(self, obj):
+        """Pobiera numer telefonu sprzedawcy i zwraca go w formacie maskowanym 123-xxx-xxx"""
+        # sięgamy do powiązanego użytkownika (sprzedawcy)
+        phone = obj.seller.phone_num
+        
+        if not phone:
+            return None
+            
+        # Oczyszczamy string z ewentualnych spacji/myślników, by operować na samych cyfrach
+        clean_phone = ''.join(c for c in str(phone) if c.isdigit())
+        
+        # Jeśli numer ma poprawną długość, zwracamy pierwsze 3 cyfry + maskę
+        if len(clean_phone) >= 3:
+            return f"{clean_phone[:3]}-xxx-xxx"
+            
+        return clean_phone  
 
     def create(self, validated_data):
         # Wyciągamy zdjęcia z danych, zanim zapis

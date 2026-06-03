@@ -1,9 +1,9 @@
 from django.shortcuts import render
 from rest_framework import generics, viewsets, permissions
 from django.contrib.auth import get_user_model
-from .models import Listing, Category, Location, ListingImage
+from .models import Listing, Category, Location, ListingImage, DeliveryMethod
 from .serializers import (
-    UserSerializer, ListingSerializer, CategorySerializer, LocationSerializer
+    UserSerializer, ListingSerializer, CategorySerializer, LocationSerializer, DeliveryMethodSerializer
 )
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from .permissions import IsListingOwnerOrReadOnly, IsOwnerOrReadOnly
@@ -105,6 +105,10 @@ class LocationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = LocationSerializer
     permission_classes = (permissions.AllowAny,)
 
+class DeliveryMethodViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = DeliveryMethod.objects.all()
+    serializer_class = DeliveryMethodSerializer
+    permission_classes = (permissions.AllowAny,)
 
 # ==========================================
 # 3. OGŁOSZENIA (Listingi)
@@ -204,7 +208,19 @@ class ListingViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         return qs.exclude(status__name="Usunięte")
-
+    @extend_schema(
+        summary="Pobierz moje ogłoszenia",
+        description="**Wymaga autoryzacji (Token JWT).** Zwraca listę wszystkich ogłoszeń zalogowanego użytkownika, posortowane od najnowszego.",
+        responses={
+            200: ListingSerializer(many=True),
+            401: OpenApiResponse(description="Brak poprawnego tokenu JWT.")
+        }
+    )
+    @action(detail=False, methods=['get'])
+    def my_listings(self, request):
+        user_listings = self.get_queryset().filter(seller=request.user).order_by('-created_at')
+        serializer = self.get_serializer(user_listings, many=True)
+        return Response(serializer.data)
     @extend_schema(
         summary="Zmień status ogłoszenia",
         description="**Wymaga autoryzacji i bycia właścicielem (IsOwner).** Szybki endpoint do zmiany samego statusu. Oczekuje JSON-a: `{\"status\": \"Nowa nazwa statusu\"}`.",
@@ -238,6 +254,7 @@ class ListingViewSet(viewsets.ModelViewSet):
                 {"error": "Podany status nie istnieje w słowniku."}, 
                 status=http_status.HTTP_400_BAD_REQUEST
             )
+        
     @extend_schema(
         summary="Usuń konkretne zdjęcie z ogłoszenia",
         description="**Wymaga autoryzacji i bycia właścicielem (IsOwner).** Usuwa wybrane zdjęcie przypisane do ogłoszenia na podstawie jego ID.",

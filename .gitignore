@@ -10,7 +10,7 @@ node_modules/
 #Backend
 .venv/
 .env
-media/
+/backend/media/
 
 __pycache__/
 *.py[cod]

@@ -156,7 +156,6 @@ class ListingSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('seller', 'status', 'created_at', 'updated_at')
         
-        # Wymuszamy aby puste spacje wyrzucały odpowiedni komunikat walidacji
         extra_kwargs = {
             'street': {
                 'allow_blank': False,

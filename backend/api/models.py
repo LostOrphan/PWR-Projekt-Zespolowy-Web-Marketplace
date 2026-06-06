@@ -101,7 +101,6 @@ def validate_address_number(value):
         return
     stripped = value.strip()
     if not stripped:
-        # Zmieniono tekst:
         raise ValidationError("Numer budynku/mieszkania nie może składać się z samych spacji.")
     if not re.match(r'^\d+[a-zA-ZĄĆĘŁŃÓŚŹŻąćęłńóśźż]*$', stripped):
         raise ValidationError("Numer musi zaczynać się od cyfry i może zawierać tylko cyfry oraz litery (np. 8, 12A, 15bis). Znaki specjalne i spacje są niedozwolone.")

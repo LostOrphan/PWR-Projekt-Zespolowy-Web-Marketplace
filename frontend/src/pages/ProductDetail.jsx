@@ -13,6 +13,8 @@ export default function ProductDetail() {
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [phoneNumber, setPhoneNumber] = useState(null)
+  const [phoneLoading, setPhoneLoading] = useState(false)
   const navigate = useNavigate()
   const [cookies, , removeCookie] = useCookies(['username', 'token'])
   const { id } = useParams()
@@ -56,17 +58,34 @@ export default function ProductDetail() {
     navigate('/login')
   }
 
-  const censorEmail = (email) => {
-    if (!email) return ''
-    const atIndex = email.indexOf('@')
-    if (atIndex <= 2) return email.substring(0, 2) + '***@***'
-    return email.substring(0, 2) + '***' + email.substring(atIndex)
-  }
+  const handleRevealPhone = async () => {
+    if (!cookies.token) {
+      navigate('/login')
+      return
+    }
 
-  const censorPhone = (phone) => {
-    if (!phone) return ''
-    if (phone.length <= 2) return '**'
-    return phone.substring(0, 2) + '***' + (phone.length > 5 ? phone.substring(phone.length - 2) : '')
+    setPhoneLoading(true)
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/api/listings/${id}/phone/`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${cookies.token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const data = await response.json()
+      if (response.ok) {
+        setPhoneNumber(data.phone_number)
+      } else {
+        alert(data.error || 'Nie udało się pobrać numeru telefonu')
+      }
+    } catch (err) {
+      console.error('Error revealing phone:', err)
+      alert('Błąd przy pobieraniu numeru telefonu')
+    } finally {
+      setPhoneLoading(false)
+    }
   }
 
   return (
@@ -114,7 +133,7 @@ export default function ProductDetail() {
               )}
               {cookies.username && (
                 <div className="user-section">
-                  <img src={userAvatar} alt="User avatar" className="user-avatar" />
+
                   <button
                     onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                     className="dropdown-btn"
@@ -232,14 +251,6 @@ export default function ProductDetail() {
                     <img src={userAvatar} alt="Seller" className="seller-avatar" />
                     <div className="seller-details">
                       <p className="seller-name">{listing.seller.first_name} {listing.seller.last_name}</p>
-                      <p className="seller-contact">
-                        <strong>Email:</strong> {censorEmail(listing.seller.email)}
-                      </p>
-                      {listing.seller.phone_num && (
-                        <p className="seller-contact">
-                          <strong>Telefon:</strong> {censorPhone(listing.seller.phone_num)}
-                        </p>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -254,7 +265,6 @@ export default function ProductDetail() {
                       >
                         Edytuj ogłoszenie
                       </button>
-                      <button className="btn-secondary">Zarządzaj ogłoszeniem</button>
                     </>
                   ) : (
                     <>
@@ -270,7 +280,13 @@ export default function ProductDetail() {
                       >
                         Kup teraz
                       </button>
-                      <button className="btn-secondary">Skontaktuj się ze sprzedawcą</button>
+                      <button 
+                        onClick={handleRevealPhone}
+                        className="btn-secondary"
+                        disabled={phoneLoading}
+                      >
+                        {phoneLoading ? 'Ładowanie...' : phoneNumber ? phoneNumber : 'Skontaktuj się ze sprzedawcą'}
+                      </button>
                     </>
                   )}
                 </div>

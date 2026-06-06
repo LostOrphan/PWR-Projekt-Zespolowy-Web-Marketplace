@@ -2,7 +2,7 @@ import '../styles/AddProduct.css'
 import { useState, useEffect } from 'react'
 import { useCookies } from 'react-cookie'
 import { useNavigate, useParams } from 'react-router-dom'
-import { getListingById, updateListing, getCategories, getLocations, changeListingStatus } from '../api/listings'
+import { getListingById, updateListing, getCategories, getLocations, getDeliveryMethods, changeListingStatus } from '../api/listings'
 
 export default function EditListing() {
   const [title, setTitle] = useState('')
@@ -17,6 +17,8 @@ export default function EditListing() {
   const [showLocationDropdown, setShowLocationDropdown] = useState(false)
   const [categories, setCategories] = useState([])
   const [locations, setLocations] = useState([])
+  const [deliveryMethods, setDeliveryMethods] = useState([])
+  const [selectedDeliveryMethods, setSelectedDeliveryMethods] = useState([])
   const [error, setError] = useState('')
   const [imageFiles, setImageFiles] = useState([])
   const [previewImages, setPreviewImages] = useState([])
@@ -39,6 +41,11 @@ export default function EditListing() {
         setLocations(locResult.data)
       }
 
+      const delResult = await getDeliveryMethods()
+      if (delResult.success) {
+        setDeliveryMethods(delResult.data)
+      }
+
       const listingResult = await getListingById(id)
       if (listingResult.success) {
         const listing = listingResult.data
@@ -52,6 +59,7 @@ export default function EditListing() {
         setLocation(listing.location?.id || '')
         setLocationSearch(listing.location?.city || '')
         setExistingImages(listing.images || [])
+        setSelectedDeliveryMethods(listing.delivery_methods || [])
       }
       setLoading(false)
     }
@@ -105,6 +113,7 @@ export default function EditListing() {
         street,
         buildingNumber,
         apartmentNumber,
+        deliveryMethods: selectedDeliveryMethods,
         imageFiles,
       }, cookies.token)
 
@@ -368,6 +377,32 @@ export default function EditListing() {
                 value={apartmentNumber}
                 onChange={(e) => setApartmentNumber(e.target.value)}
               />
+            </div>
+            <div className="form-group" style={{ marginLeft: 0, paddingLeft: 0 }}>
+              <label style={{ margin: 0, marginBottom: '8px', display: 'block' }}>Metody dostawy:</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0px', marginLeft: 0, paddingLeft: 0 }}>
+                {deliveryMethods.length > 0 ? (
+                  deliveryMethods.map((method) => (
+                    <label key={method.id} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', margin: 0, marginLeft: '0px', fontSize: '14px', padding: '2px 0', lineHeight: '1' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedDeliveryMethods.includes(method.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedDeliveryMethods([...selectedDeliveryMethods, method.id])
+                          } else {
+                            setSelectedDeliveryMethods(selectedDeliveryMethods.filter(id => id !== method.id))
+                          }
+                        }}
+                        style={{ margin: 0, padding: 0 , width: '16px', height: '16px' }}
+                      />
+                      {method.name}
+                    </label>
+                  ))
+                ) : (
+                  <p style={{ color: '#999', margin: 0, fontSize: '14px' }}>Brak dostępnych metod dostawy</p>
+                )}
+              </div>
             </div>
             <button type="submit" className="add-btn">Zapisz zmiany</button>
             

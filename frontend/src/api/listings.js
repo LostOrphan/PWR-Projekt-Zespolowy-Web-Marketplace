@@ -184,6 +184,13 @@ export const createListing = async (listingData, token) => {
       formData.append('apartment_number', listingData.apartmentNumber)
     }
 
+    // Append delivery methods
+    if (listingData.deliveryMethods && listingData.deliveryMethods.length > 0) {
+      listingData.deliveryMethods.forEach((methodId) => {
+        formData.append('delivery_methods', methodId)
+      })
+    }
+
     // Append image files
     if (listingData.imageFiles && listingData.imageFiles.length > 0) {
       listingData.imageFiles.forEach((file) => {
@@ -268,6 +275,13 @@ export const updateListing = async (id, listingData, token) => {
     }
     if (listingData.apartmentNumber) {
       formData.append('apartment_number', listingData.apartmentNumber)
+    }
+
+    // Append delivery methods
+    if (listingData.deliveryMethods && listingData.deliveryMethods.length > 0) {
+      listingData.deliveryMethods.forEach((methodId) => {
+        formData.append('delivery_methods', methodId)
+      })
     }
 
     // Append image files

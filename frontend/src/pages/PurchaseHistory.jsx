@@ -121,7 +121,7 @@ export default function PurchaseHistory() {
               )}
               {cookies.username && (
                 <div className="user-section">
-                  <img src={userAvatar} alt="User avatar" className="user-avatar" />
+
                   <button
                     onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                     className="dropdown-btn"

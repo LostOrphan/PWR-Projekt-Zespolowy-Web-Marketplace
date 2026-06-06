@@ -13,6 +13,8 @@ export default function Checkout() {
   const [deliveryMethods, setDeliveryMethods] = useState([])
   const [selectedDeliveryMethod, setSelectedDeliveryMethod] = useState('')
   const [selectedPayment, setSelectedPayment] = useState('card')
+  const [deliveryDetails, setDeliveryDetails] = useState('')
+  const [paymentReference, setPaymentReference] = useState('')
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState('')
@@ -39,9 +41,6 @@ export default function Checkout() {
       const deliveryResult = await getDeliveryMethods()
       if (deliveryResult.success) {
         setDeliveryMethods(deliveryResult.data)
-        if (deliveryResult.data.length > 0) {
-          setSelectedDeliveryMethod(deliveryResult.data[0].id)
-        }
       }
 
       setLoading(false)
@@ -53,6 +52,18 @@ export default function Checkout() {
     logoutUser(removeCookie)
     navigate('/login')
   }
+
+  // Filter available delivery methods based on listing's delivery_methods
+  const availableDeliveryMethods = deliveryMethods.filter(method =>
+    listing?.delivery_methods && listing.delivery_methods.includes(method.id)
+  )
+
+  // Set initial selected method from available ones
+  useEffect(() => {
+    if (availableDeliveryMethods.length > 0 && !selectedDeliveryMethod) {
+      setSelectedDeliveryMethod(availableDeliveryMethods[0].id)
+    }
+  }, [availableDeliveryMethods, selectedDeliveryMethod])
 
   const handlePlaceOrder = async (e) => {
     e.preventDefault()
@@ -76,7 +87,7 @@ export default function Checkout() {
         {
           listing: listing.id,
           delivery_method: parseInt(selectedDeliveryMethod),
-          delivery_details: `Payment method: ${selectedPayment}`,
+          delivery_details: `Payment method: ${selectedPayment}\\n\\nDelivery details:\\n${deliveryDetails}`,
         },
         cookies.token
       )
@@ -149,7 +160,7 @@ export default function Checkout() {
               )}
               {cookies.username && (
                 <div className="user-section">
-                  <img src={userAvatar} alt="User avatar" className="user-avatar" />
+
                   <button
                     onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                     className="dropdown-btn"
@@ -302,21 +313,42 @@ export default function Checkout() {
               <form onSubmit={handlePlaceOrder}>
                 {/* Delivery Method */}
                 <div className="form-group">
-                  <label htmlFor="delivery">Metoda dostawy:</label>
-                  <select
-                    id="delivery"
-                    className="select-category"
-                    value={selectedDeliveryMethod}
-                    onChange={(e) => setSelectedDeliveryMethod(e.target.value)}
-                    required
-                  >
-                    <option value="">-- Wybierz metodę dostawy --</option>
-                    {deliveryMethods.map((method) => (
-                      <option key={method.id} value={method.id}>
-                        {method.name} {method.description ? `- ${method.description}` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <label>Metoda dostawy:</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {deliveryMethods.map((method) => {
+                      const isAvailable = listing?.delivery_methods && listing.delivery_methods.includes(method.id)
+                      return (
+                        <label
+                          key={method.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            cursor: isAvailable ? 'pointer' : 'not-allowed',
+                            padding: '0.75rem',
+                            borderRadius: '4px',
+                            border: selectedDeliveryMethod == method.id ? '2px solid #2196F3' : '1px solid #ddd9cc',
+                            backgroundColor: selectedDeliveryMethod == method.id ? '#E3F2FD' : isAvailable ? 'transparent' : '#f5f5f5',
+                            opacity: isAvailable ? 1 : 0.5,
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="delivery"
+                            value={method.id}
+                            checked={selectedDeliveryMethod == method.id}
+                            onChange={(e) => setSelectedDeliveryMethod(e.target.value)}
+                            disabled={!isAvailable}
+                            style={{ marginRight: '0.75rem', cursor: isAvailable ? 'pointer' : 'not-allowed' }}
+                          />
+                          <span style={{ color: isAvailable ? '#333' : '#999' }}>
+                            {method.name}
+                            {method.description && ` - ${method.description}`}
+                            {!isAvailable && ' (niedostępna)'}
+                          </span>
+                        </label>
+                      )
+                    })}
+                  </div>
                 </div>
 
                 {/* Payment Method */}
@@ -349,6 +381,30 @@ export default function Checkout() {
                     ))}
                   </div>
                 </div>
+
+                {/* Delivery Details */}
+                <div className="form-group">
+                  <label htmlFor="deliveryDetails">Dane dostawy (adres, paczkomat itp.):</label>
+                  <textarea
+                    id="deliveryDetails"
+                    value={deliveryDetails}
+                    onChange={(e) => setDeliveryDetails(e.target.value)}
+                    placeholder="Np. ul. Marszałkowska 1, 00-001 Warszawa lub numer paczkomatu"
+                    rows="3"
+                    style={{
+                      width: '50%',
+                      padding: '10px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      fontFamily: 'inherit',
+                      boxSizing: 'border-box',
+                      backgroundColor: '#fff',
+                      color: '#333'
+                    }}
+                  />
+                </div>
+
 
                 {/* Info */}
                 <div

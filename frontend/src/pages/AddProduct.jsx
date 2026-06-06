@@ -2,7 +2,7 @@ import '../styles/AddProduct.css'
 import { useState, useEffect } from 'react'
 import { useCookies } from 'react-cookie'
 import { useNavigate } from 'react-router-dom'
-import { createListing, getCategories, getLocations } from '../api/listings'
+import { createListing, getCategories, getLocations, getDeliveryMethods } from '../api/listings'
 
 export default function AddProduct() {
   const [title, setTitle] = useState('')
@@ -17,6 +17,8 @@ export default function AddProduct() {
   const [showLocationDropdown, setShowLocationDropdown] = useState(false)
   const [categories, setCategories] = useState([])
   const [locations, setLocations] = useState([])
+  const [deliveryMethods, setDeliveryMethods] = useState([])
+  const [selectedDeliveryMethods, setSelectedDeliveryMethods] = useState([])
   const [error, setError] = useState('')
   const [imageFiles, setImageFiles] = useState([])
   const [previewImages, setPreviewImages] = useState([])
@@ -33,6 +35,11 @@ export default function AddProduct() {
       const locResult = await getLocations()
       if (locResult.success) {
         setLocations(locResult.data)
+      }
+
+      const delResult = await getDeliveryMethods()
+      if (delResult.success) {
+        setDeliveryMethods(delResult.data)
       }
     }
     fetchCategoriesAndLocations()
@@ -81,6 +88,7 @@ export default function AddProduct() {
         street,
         buildingNumber,
         apartmentNumber,
+        deliveryMethods: selectedDeliveryMethods,
         imageFiles,
       }, cookies.token)
 
@@ -141,12 +149,14 @@ export default function AddProduct() {
                 onChange={(e) => setTitle(e.target.value)}
                 required
                 placeholder="np. ścianka działowa"
+                style ={{ backgroundColor: '#fff', color: '#333' }}
               />
             </div>
             <div className="form-group">
               <label htmlFor="category">Kategoria:</label>
               <select
                 id="category"
+                style ={{ backgroundColor: '#fff', color: '#333' }}
                 className="select-category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
@@ -205,6 +215,7 @@ export default function AddProduct() {
               <input
                 type="number"
                 step="0.01"
+                style ={{ backgroundColor: '#fff', color: '#333' }}
                 id="price"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
@@ -216,6 +227,7 @@ export default function AddProduct() {
               <label htmlFor="description">Opis produktu:</label>
               <textarea
                 id="description"
+                style ={{ backgroundColor: '#fff', color: '#333' }}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 required
@@ -238,7 +250,7 @@ export default function AddProduct() {
                   }}
                   onFocus={() => setShowLocationDropdown(true)}
                   placeholder="Wpisz miasto..."
-                  style={{ paddingRight: '30px', width: '100%', boxSizing: 'border-box' }}
+                  style={{ paddingRight: '30px', width: '100%', boxSizing: 'border-box', backgroundColor: '#fff', color: '#333' }}
                 />
                 <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#333', fontSize: '12px' }}>▼</div>
                 {showLocationDropdown && (
@@ -271,6 +283,7 @@ export default function AddProduct() {
               <input
                 type="text"
                 id="street"
+                style ={{ backgroundColor: '#fff', color: '#333' }}
                 value={street}
                 onChange={(e) => setStreet(e.target.value)}
                 placeholder="Nazwa ulicy"
@@ -281,6 +294,7 @@ export default function AddProduct() {
               <input
                 type="text"
                 id="buildingNumber"
+                style ={{ backgroundColor: '#fff', color: '#333' }}
                 value={buildingNumber}
                 onChange={(e) => setBuildingNumber(e.target.value)}
                 placeholder="Nr budynku"
@@ -291,10 +305,37 @@ export default function AddProduct() {
               <input
                 type="text"
                 id="apartmentNumber"
+                style ={{ backgroundColor: '#fff', color: '#333' }}
                 value={apartmentNumber}
                 onChange={(e) => setApartmentNumber(e.target.value)}
                 placeholder="Nr mieszkania"
               />
+            </div>
+            <div className="form-group" style={{ marginLeft: 0, paddingLeft: 0 }}>
+              <label style={{ margin: 0, marginBottom: '8px', display: 'block' }}>Metody dostawy:</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0px', marginLeft: 0, paddingLeft: 0 }}>
+                {deliveryMethods.length > 0 ? (
+                  deliveryMethods.map((method) => (
+                    <label key={method.id} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', margin: 0, marginLeft: '0px', fontSize: '14px', padding: '2px 0', lineHeight: '1' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedDeliveryMethods.includes(method.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedDeliveryMethods([...selectedDeliveryMethods, method.id])
+                          } else {
+                            setSelectedDeliveryMethods(selectedDeliveryMethods.filter(id => id !== method.id))
+                          }
+                        }}
+                        style={{ margin: 0, padding: 0,  width: '16px', height: '16px', backgroundColor: '#fff', color: '#333' }}
+                      />
+                      {method.name}
+                    </label>
+                  ))
+                ) : (
+                  <p style={{ color: '#999', margin: 0, fontSize: '14px' }}>Brak dostępnych metod dostawy</p>
+                )}
+              </div>
             </div>
             <button type="submit" className="add-btn">Dodaj ogłoszenie</button>
           </form>

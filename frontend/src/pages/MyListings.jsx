@@ -91,7 +91,7 @@ export default function MyListings() {
             <div>
               {cookies.username && (
                 <div className="user-section">
-                  <img src={userAvatar} alt="User avatar" className="user-avatar" />
+
                   <button
                     onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                     className="dropdown-btn"

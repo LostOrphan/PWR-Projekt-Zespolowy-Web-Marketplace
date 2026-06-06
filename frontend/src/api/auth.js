@@ -20,7 +20,7 @@ export const registerUser = async (userData) => {
   if (response.status === 201) {
     return { success: true, data }
   } else if (response.status === 400) {
-    const errors = Object.values(data).flat().join(', ')
+    const errors = Object.values(data).flat().join(' ')
     return { success: false, error: errors || 'Błąd walidacji' }
   } else {
     return { success: false, error: 'Błąd serwera' }

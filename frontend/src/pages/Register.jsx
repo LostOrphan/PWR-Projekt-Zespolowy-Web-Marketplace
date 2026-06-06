@@ -18,7 +18,7 @@ export default function Login() {
     setError('')
     
     if (password !== password2) {
-      setError('Hasła nie są identyczne')
+      setError('Hasła nie są identyczne.')
       return
     }
 
@@ -38,7 +38,7 @@ export default function Login() {
       }
     } catch (err) {
       console.error('Registration error:', err)
-      setError('Błąd połączenia z serwerem')
+      setError('Błąd połączenia z serwerem.')
     }
   }
 

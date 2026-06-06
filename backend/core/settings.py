@@ -164,7 +164,7 @@ REST_FRAMEWORK = {
         'anon': '1000/day',
         'login': '10/minute',   
         'user': '5000/day',   
-        'register': '3/minute',
+        'register': '20/minute',
         'create_offer': '10/hour', 
         'phoneNumReveal': '20/minute'
     }

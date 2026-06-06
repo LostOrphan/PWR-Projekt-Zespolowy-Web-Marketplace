@@ -119,8 +119,12 @@ class ListingSerializer(serializers.ModelSerializer):
     # Zagnieżdżoną lista w formacie JSON (tylko do odczytu)
     images = ListingImageSerializer(many=True, read_only=True)
     seller = SellerSerializer(read_only=True)
-    location = LocationSerializer(read_only=True)
-    category = CategorySerializer(read_only=True)
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
+    location = serializers.PrimaryKeyRelatedField(
+        queryset=Location.objects.all(),
+        required=False,
+        allow_null=True
+    )
     phone_number = serializers.SerializerMethodField()
     # Dodatkowe pole do przyjmowania plików zdjęć z frontendu (FormData)
     uploaded_images = serializers.ListField(
@@ -141,6 +145,13 @@ class ListingSerializer(serializers.ModelSerializer):
             'images', 'uploaded_images'
         )
         read_only_fields = ('seller', 'status', 'created_at', 'updated_at')
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['category'] = CategorySerializer(instance.category).data
+        data['location'] = LocationSerializer(instance.location).data if instance.location else None
+        return data
+
     def get_phone_number(self, obj):
         """Pobiera numer telefonu sprzedawcy i zwraca go w formacie maskowanym 123-xxx-xxx"""
         # sięgamy do powiązanego użytkownika (sprzedawcy)

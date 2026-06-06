@@ -44,7 +44,13 @@
 > python manage.py seed_dictionaries
 > python manage.py seed_locations <absolutna ścieżka do pliku miasta_polska.csv ponieważ python xd>
 > ```
-> 
+> Opcjonalne:
+> Jeśli chcesz utworzyć losowe ogłoszenia wykonaj komendę:
+> ```
+> python manage.py seed_listings [liczba_ogłoszeń] [szerokość_zdjęcia] [wysokość_zdjęcia]
+> ```
+> Skrypt stworzy 5 przykładowych użytkowników, gdzie każdy będzie mieć mail `seed_user_X@example.com` oraz hasło `SeedPassword123!`, a następnie utworzy wybraną ilość ogłoszeń.
+>
 > Opcjonalnie: Utworzenie konta administratora (daje dostęp do panelu admina pod adresem /admin/)
 > ```python manage.py createsuperuser```
 > 

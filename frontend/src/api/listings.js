@@ -213,7 +213,7 @@ export const createListing = async (listingData, token) => {
     if (response.status === 201) {
       return { success: true, data }
     } else if (response.status === 400) {
-      const errors = Object.values(data).flat().join(', ')
+      const errors = Object.values(data).flat().join(' ')
       return { success: false, error: errors || 'Błąd walidacji' }
     } else if (response.status === 401) {
       return { success: false, error: 'Brak autoryzacji' }
@@ -304,7 +304,7 @@ export const updateListing = async (id, listingData, token) => {
     if (response.status === 200) {
       return { success: true, data }
     } else if (response.status === 400) {
-      const errors = Object.values(data).flat().join(', ')
+      const errors = Object.values(data).flat().join(' ')
       return { success: false, error: errors || 'Błąd walidacji' }
     } else if (response.status === 401) {
       return { success: false, error: 'Brak autoryzacji' }
@@ -400,7 +400,7 @@ export const createOrder = async (orderData, token) => {
       
       return { success: true, data }
     } else if (response.status === 400) {
-      const errors = Object.values(data).flat().join(', ')
+      const errors = Object.values(data).flat().join(' ')
       return { success: false, error: errors || 'Błąd walidacji' }
     } else if (response.status === 401) {
       return { success: false, error: 'Brak autoryzacji' }

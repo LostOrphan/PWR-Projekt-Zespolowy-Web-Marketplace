@@ -4,6 +4,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useCookies } from 'react-cookie'
 import { logoutUser } from '../api/auth'
 import { getCategories, searchListings } from '../api/listings'
+import Header from '../pages/components/Header.jsx'
+import Footer from '../pages/components/Footer.jsx'
 import userAvatar from '../assets/user.png'
 
 export default function Search() {
@@ -62,73 +64,7 @@ export default function Search() {
   return (
     <div className="app-container">
       {/* Header */}
-      <header className="app-header">
-        <div className="header-bottom">
-          <div className='header-item left-side'>
-            <div className="category-dropdown">
-              <button
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="dropdown-btn"
-              >
-                Kategorie ▼
-              </button>
-              {dropdownOpen && (
-                <div className="dropdown-menu">
-                  <button 
-                    onClick={() => handleCategoryFilter(null)}
-                    className="dropdown-link"
-                    style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}
-                  >
-                    Wszystkie
-                  </button>
-                  {categories.map((category) => (
-                    <button 
-                      onClick={() => handleCategoryFilter(category.id)}
-                      key={category.id} 
-                      className="dropdown-link"
-                      style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}
-                    >
-                      {category.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          <div className='header-logo-item'><h1>Aplikacja Marketplace</h1></div>
-          <div className='header-item right-side'>
-            <div>
-              {!cookies.username && (
-                <div className="user-section">
-                  <button
-                    onClick={() => navigate('/login')}
-                    className="dropdown-btn"
-                  >Zaloguj się</button>
-                </div>
-              )}
-              {cookies.username && (
-                <div className="user-section">
-
-                  <button
-                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                    className="dropdown-btn"
-                  >
-                    {cookies.username} ▼
-                  </button>
-                  {userDropdownOpen && (
-                    <div className="dropdown-menu">
-                      <button onClick={() => navigate('/mylistings')} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Moje ogłoszenia</button>
-                      <button onClick={() => navigate('/purchase-history')} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Historia zakupów</button>
-                      <button onClick={() => navigate('/addproduct')} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Dodaj ogłoszenie</button>
-                      <button onClick={handleLogout} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Wyloguj się</button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header/>
 
       {/* Main content area */}
       <div className="content-wrapper">
@@ -217,6 +153,7 @@ export default function Search() {
             </div>
           </div>
         </main>
+        <Footer/>
       </div>
     </div>
   )

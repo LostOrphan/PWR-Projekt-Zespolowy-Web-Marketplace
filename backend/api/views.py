@@ -4,7 +4,8 @@ from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth import get_user_model
 from .models import Listing, Category, Location, ListingImage, DeliveryMethod
 from .serializers import (
-    UserSerializer, ListingSerializer, CategorySerializer, LocationSerializer, DeliveryMethodSerializer
+    UserSerializer, ListingSerializer, ListingListSerializer, 
+    CategorySerializer, LocationSerializer, DeliveryMethodSerializer
 )
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from .permissions import IsListingOwnerOrReadOnly, IsOwnerOrReadOnly
@@ -173,13 +174,21 @@ class DeliveryMethodViewSet(viewsets.ReadOnlyModelViewSet):
 )
 class ListingViewSet(viewsets.ModelViewSet):
     queryset = Listing.objects.all().order_by('-created_at')
-    serializer_class = ListingSerializer
+    # serializer_class = ListingSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
     pagination_class = PageNumberPagination
     
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['category', 'location', 'status']
     search_fields = ['title', 'description']
+    def get_serializer_class(self):
+        """
+        Zwraca skrócony serializator dla zapytań zwracających wiele wyników, 
+        a pełny dla pobierania szczegółów i operacji tworzenia/edycji.
+        """
+        if self.action in ['list', 'my_listings']:
+            return ListingListSerializer
+        return ListingSerializer
     def get_throttles(self):
             if self.action == 'create':
                 # Przypisujemy konkretny limit ze słownika w settings.py

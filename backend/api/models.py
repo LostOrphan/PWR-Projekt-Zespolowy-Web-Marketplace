@@ -1,5 +1,4 @@
 from django.db import models
-import re
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.conf import settings
 from django.core.validators import MinValueValidator
@@ -85,26 +84,6 @@ class Location(models.Model):
         if self.region:
             return f"{self.city} ({self.region}), {self.country}"
         return f"{self.city}, {self.country}"
-def validate_street(value):
-    if value is None:
-        return
-    stripped = value.strip()
-    if not stripped:
-        # Zmieniono tekst:
-        raise ValidationError("Ulica nie może składać się z samych spacji.")
-    if not re.match(r'^[A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż]', stripped):
-        raise ValidationError("Ulica musi zaczynać się literą.")
-
-
-def validate_address_number(value):
-    if value is None:
-        return
-    stripped = value.strip()
-    if not stripped:
-        raise ValidationError("Numer budynku/mieszkania nie może składać się z samych spacji.")
-    if not re.match(r'^\d+[a-zA-ZĄĆĘŁŃÓŚŹŻąćęłńóśźż]*$', stripped):
-        raise ValidationError("Numer musi zaczynać się od cyfry i może zawierać tylko cyfry oraz litery (np. 8, 12A, 15bis). Znaki specjalne i spacje są niedozwolone.")
-
 class Address(models.Model):
     # Relacja OneToOne: Każdy użytkownik może mieć dokładnie jeden domyślny adres
     user = models.OneToOneField(
@@ -124,42 +103,13 @@ class Address(models.Model):
     )
     
     # Pola adresowe
-    street = models.CharField(
-        max_length=255,
-        blank=False,
-        null=True,
-        verbose_name="Ulica",
-        validators=[validate_street],
-        error_messages={
-            'blank': 'Ulica nie może składać się z samych spacji.'
-        }
-    )
-    building_number = models.CharField(
-        max_length=20,
-        blank=False,
-        null=True,
-        verbose_name="Numer budynku",
-        validators=[validate_address_number],
-        error_messages={
-            'blank': 'Numer budynku nie może składać się z samych spacji.'
-        }
-    )
-    apartment_number = models.CharField(
-        max_length=20,
-        blank=False,
-        null=True,
-        verbose_name="Numer lokalu",
-        validators=[validate_address_number],
-        error_messages={
-            'blank': 'Numer lokalu nie może składać się z samych spacji.'
-        }
-    )
-    
+    street = models.CharField(max_length=255, blank=True, null=True, verbose_name="Ulica")
+    building_number = models.CharField(max_length=20, blank=True, null=True, verbose_name="Nr budynku")
+    apartment_number = models.CharField(max_length=20, blank=True, null=True, verbose_name="Nr mieszkania")
+
     def __str__(self):
         return f"Adres użytkownika {self.user.email}"
-
-
-
+    
 # Model słownika statusów ogłoszenia
 class ListingStatus(models.Model):
     name = models.CharField(max_length=50, unique=True)
@@ -176,41 +126,14 @@ class Listing(models.Model):
     seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='listings')
     category = models.ForeignKey(Category, on_delete=models.RESTRICT, related_name='listings')
     location = models.ForeignKey(Location, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Miasto")
-    street = models.CharField(
-        max_length=255,
-        blank=False,
-        null=True,
-        verbose_name="Ulica",
-        validators=[validate_street],
-        error_messages={
-            'blank': 'Ulica nie może składać się z samych spacji.'
-        }
-    )
-    building_number = models.CharField(
-        max_length=20,
-        blank=False,
-        null=True,
-        verbose_name="Numer budynku",
-        validators=[validate_address_number],
-        error_messages={
-            'blank': 'Numer budynku nie może składać się z samych spacji.'
-        }
-    )
-    apartment_number = models.CharField(
-        max_length=20,
-        blank=False,
-        null=True,
-        verbose_name="Numer lokalu",
-        validators=[validate_address_number],
-        error_messages={
-            'blank': 'Numer lokalu nie może składać się z samych spacji.'
-        }
-    )
+    street = models.CharField(max_length=255, blank=True, null=True, verbose_name="Ulica")
+    building_number = models.CharField(max_length=20, blank=True, null=True, verbose_name="Numer budynku")
+    apartment_number = models.CharField(max_length=20, blank=True, null=True, verbose_name="Numer lokalu")
     
     status = models.ForeignKey(ListingStatus, on_delete=models.RESTRICT, default=1)
     
-    title = models.CharField(max_length=60)
-    description = models.TextField(max_length=5000)
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
     # Relacja wiele do wielu metod dostaw
     delivery_methods = models.ManyToManyField(
         'DeliveryMethod', 
@@ -231,11 +154,9 @@ class Listing(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.price} zł"
-
-
 def validate_file_size(value):
     filesize = value.size
-    if filesize > 10 * 1024 * 1024: # Limit 10MB
+    if filesize > 10 * 1024 * 1024: # Limit 5MB
         raise ValidationError("Maksymalny rozmiar pliku to 10MB")
         
 # Model przechowywania zdjęć ogłoszeń

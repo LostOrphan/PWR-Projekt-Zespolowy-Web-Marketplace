@@ -5,6 +5,8 @@ import { useCookies } from 'react-cookie'
 import { getListingById, getCategories } from '../api/listings'
 import { logoutUser } from '../api/auth'
 import userAvatar from '../assets/user.png'
+import Header from '../pages/components/Header.jsx'
+import Footer from '../pages/components/Footer.jsx'
 
 export default function ProductDetail() {
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -91,69 +93,7 @@ export default function ProductDetail() {
   return (
     <div className="app-container">
       {/* Header */}
-      <header className="app-header">
-        <div className="header-bottom">
-          <div className='header-item left-side'>
-            <div className="category-dropdown">
-              <button
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="dropdown-btn"
-              >
-                Kategorie ▼
-              </button>
-              {dropdownOpen && (
-                <div className="dropdown-menu">
-                  {categories.map((category) => (
-                    <button 
-                      onClick={() => {
-                        navigate('/')
-                        setDropdownOpen(false)
-                      }}
-                      key={category.id} 
-                      className="dropdown-link"
-                      style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}
-                    >
-                      {category.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          <div className='header-logo-item'><h1 onClick={() => navigate('/')}>Aplikacja Marketplace</h1></div>
-          <div className='header-item right-side'>
-            <div>
-              {!cookies.username && (
-                <div className="user-section">
-                  <button
-                    onClick={() => navigate('/login')}
-                    className="dropdown-btn"
-                  >Zaloguj się</button>
-                </div>
-              )}
-              {cookies.username && (
-                <div className="user-section">
-
-                  <button
-                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                    className="dropdown-btn"
-                  >
-                    {cookies.username} ▼
-                  </button>
-                  {userDropdownOpen && (
-                    <div className="dropdown-menu">
-                      <button onClick={() => navigate('/mylistings')} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Moje ogłoszenia</button>
-                      <button onClick={() => navigate('/purchase-history')} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Historia zakupów</button>
-                      <button onClick={() => navigate('/addproduct')} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Dodaj ogłoszenie</button>
-                      <button onClick={handleLogout} className="dropdown-link" style={{width: '100%', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', padding: '0.5rem 1rem'}}>Wyloguj się</button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header/>
       {/* Main content area */}
       <div className="content-wrapper">
         <main className="main-content">
@@ -300,9 +240,7 @@ export default function ProductDetail() {
         </main>
 
         {/* Footer */}
-        <footer className="app-footer">
-          <p>&copy; 2026 Aplikacja Marketplace</p>
-        </footer>
+        <Footer/>
       </div>
     </div>
   )

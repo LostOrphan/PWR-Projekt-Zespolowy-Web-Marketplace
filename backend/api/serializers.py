@@ -201,56 +201,58 @@ class ListingSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         delivery_methods = validated_data.pop('delivery_methods', [])
         uploaded_images = validated_data.pop('uploaded_images', [])
-        
-        listing = Listing.objects.create(**validated_data)
-        if delivery_methods:
-            listing.delivery_methods.set(delivery_methods)
-            
-        for index, image in enumerate(uploaded_images):
-            is_primary = True if index == 0 else False
-            listing_image = ListingImage(
-                listing=listing,
-                image=image,
-                display_order=index,
-                is_primary=is_primary
-            )
-            try:
-                listing_image.full_clean()
-            except DjangoValidationError as exc:
-                raise serializers.ValidationError({'uploaded_images': exc.message_dict if hasattr(exc, 'message_dict') else exc.messages})
-            listing_image.save()
-            
+
+        with transaction.atomic():
+            listing = Listing.objects.create(**validated_data)
+            if delivery_methods:
+                listing.delivery_methods.set(delivery_methods)
+                
+            for index, image in enumerate(uploaded_images):
+                is_primary = True if index == 0 else False
+                listing_image = ListingImage(
+                    listing=listing,
+                    image=image,
+                    display_order=index,
+                    is_primary=is_primary
+                )
+                try:
+                    listing_image.full_clean()
+                except DjangoValidationError as exc:
+                    raise serializers.ValidationError({'uploaded_images': exc.message_dict if hasattr(exc, 'message_dict') else exc.messages})
+                listing_image.save()
+
         return listing
 
     def update(self, instance, validated_data):
         delivery_methods = validated_data.pop('delivery_methods', None)
         uploaded_images = validated_data.pop('uploaded_images', [])
 
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
+        with transaction.atomic():
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            instance.save()
 
-        if delivery_methods is not None:
-            instance.delivery_methods.set(delivery_methods)
+            if delivery_methods is not None:
+                instance.delivery_methods.set(delivery_methods)
 
-        if uploaded_images:
-            # Upewniamy się, że nowe zdjęcia dodają się NA KOŃCU, a nie od indexu 0
-            last_image = instance.images.order_by('display_order').last()
-            start_index = (last_image.display_order + 1) if last_image else 0
-            
-            for index, image in enumerate(uploaded_images):
-                listing_image = ListingImage(
-                    listing=instance,
-                    image=image,
-                    display_order=start_index + index,
-                    is_primary=False
-                )
-                try:
-                    listing_image.full_clean()
-                except DjangoValidationError as exc:
-                    raise serializers.ValidationError({'uploaded_images': exc.message_dict if hasattr(exc, 'message_dict') else exc.messages})
+            if uploaded_images:
+                # Upewniamy się, że nowe zdjęcia dodają się NA KOŃCU, a nie od indexu 0
+                last_image = instance.images.order_by('display_order').last()
+                start_index = (last_image.display_order + 1) if last_image else 0
                 
-                listing_image.save() # Zostawiony jeden zapis (usunięty duplikat Objects.create)
+                for index, image in enumerate(uploaded_images):
+                    listing_image = ListingImage(
+                        listing=instance,
+                        image=image,
+                        display_order=start_index + index,
+                        is_primary=False
+                    )
+                    try:
+                        listing_image.full_clean()
+                    except DjangoValidationError as exc:
+                        raise serializers.ValidationError({'uploaded_images': exc.message_dict if hasattr(exc, 'message_dict') else exc.messages})
+                    
+                    listing_image.save() # Zostawiony jeden zapis (usunięty duplikat Objects.create)
 
         return instance
 

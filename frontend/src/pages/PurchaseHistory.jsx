@@ -58,36 +58,7 @@ export default function PurchaseHistory() {
       {/* Main content */}
       <div className="content-wrapper">
         <main className="main-content">
-          <button
-            onClick={() => navigate(-1)}
-            style={{
-              backgroundColor: '#ffffff',
-              color: '#333',
-              border: '1px solid #ddd9cc',
-              padding: '12px 20px',
-              borderRadius: '20px',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: '500',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              transition: 'background-color 0.3s, border-color 0.3s',
-              marginBottom: '1.5rem',
-              width: 'fit-content',
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = '#f9f8f5'
-              e.target.style.borderColor = '#c9c2b8'
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = '#ffffff'
-              e.target.style.borderColor = '#ddd9cc'
-            }}
-            title="Wróć do poprzedniej strony"
-          >
-            ← Wróć
-          </button>
+        
 
           <h1 style={{ marginBottom: '2rem' }}>Historia zakupów</h1>
 

@@ -97,10 +97,7 @@ export default function ProductDetail() {
       {/* Main content area */}
       <div className="content-wrapper">
         <main className="main-content">
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-            <button onClick={() => navigate('/')} className="back-btn">Strona Główna</button>
-            <button onClick={() => navigate(-1)} className="back-btn">← Wróć</button>
-          </div>
+          
           
           {loading ? (
             <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1}}>

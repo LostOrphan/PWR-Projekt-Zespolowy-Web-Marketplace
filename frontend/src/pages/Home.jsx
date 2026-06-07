@@ -1,11 +1,12 @@
 import '../styles/Home.css'
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams  } from 'react-router-dom'
 import { useCookies } from 'react-cookie'
 import { logoutUser } from '../api/auth'
 import Header from '../pages/components/Header.jsx'
 import Footer from '../pages/components/Footer.jsx'
-import { getCategories, getLocations, getListings } from '../api/listings'
+import Listing from '../pages/components/Listing.jsx'
+import { getCategories, getLocations, getListings, searchListings } from '../api/listings'
 import userAvatar from '../assets/user.png'
 
 export default function Home() {
@@ -62,17 +63,36 @@ export default function Home() {
   const handleSearch = (e) => {
     e.preventDefault()
     const formData = new FormData(e.target)
-    const query = formData.get('search')
-    if (query.trim()) {
-      navigate(`/search?q=${encodeURIComponent(query)}`)
-    }
+    const query = formData.get('search') /////
+    handleFilteredSearch(query, selectedCategory)
+    
   }
 
-  const handleLogout = () => {
+  const handleLogout = (searchQuery, selectedCategory) => {
     logoutUser(removeCookie)
     navigate('/login')
   }
 
+  const handleFilteredSearch = (searchQuery, category) => {
+
+    const fetchData = async () => {
+          
+    
+          if (searchQuery.trim()) {
+            const filters = selectedCategory !== null ? { category: selectedCategory } : {}
+            const result = await searchListings(searchQuery, filters, true)
+            if (result.success) {
+              setFilteredListings(result.data)
+            }
+          }
+        }
+        fetchData()
+  }
+  const handleClearFilters = () => {
+    handleClearLocation();
+    handleCategoryFilter(null);
+    applyFilters(null, null)
+  }
 
   const handleCategoryFilter = (categoryId) => {
     setSelectedCategory(categoryId)
@@ -96,7 +116,7 @@ export default function Home() {
   const filteredLocations = locations.filter((loc) =>
     loc.city.toLowerCase().includes(locationSearch.toLowerCase())
   )
-
+  
   const applyFilters = (categoryId, locationId) => {
     let filtered = listings
 
@@ -205,8 +225,10 @@ export default function Home() {
                 </div>
               )}
             </div>
+            <div className='category-dropdown'><button onClick = {() => handleClearFilters() } className="search-button" style={{width: '150px'}}>Resetuj filtry</button></div>
             </div>
             </div>
+
           {/* Listings Section */}
           <div className="category-section">
             <h2 className="category-title">
@@ -222,35 +244,16 @@ export default function Home() {
                     }
                     return title.trim()
                   })()
-                : 'Najnowsze ogłoszenia'}
+                : 'Dostępne ogłoszenia'}
             </h2>
-            <div className="product-row">
+            <div className="product-grid">
               {filteredListings.length > 0 ? (
                 filteredListings.map((listing) => (
-                  <div 
-                    key={listing.id} 
-                    className="product-card" 
-                    onClick={() => navigate(`/product/${listing.id}`)}
-                  >
-                    {listing.images && listing.images.length > 0 ? (
-                      <img 
-                        src={listing.images[0].image} 
-                        alt={listing.title} 
-                        className="product-image"
-                        onError={(e) => {
-                          e.target.src = userAvatar
-                        }}
-                      />
-                    ) : (
-                      <img 
-                        src={userAvatar} 
-                        alt="No image" 
-                        className="product-image"
-                      />
-                    )}
-                    <p className="product-name">{listing.title}</p>
-                    <p className="product-price">{listing.price} zł</p>
-                  </div>
+                  <Listing
+                    id={listing.id} 
+                    images ={listing.images}
+                    title={listing.title} 
+                    price={listing.price}/>
                 ))
               ) : (
                 <p style={{gridColumn: '1 / -1', textAlign: 'center', padding: '2rem'}}>Brak ogłoszeń spełniających kryteria filtru</p>

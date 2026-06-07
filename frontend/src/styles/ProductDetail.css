@@ -325,16 +325,6 @@
   border-color: #c9c2b8;
 }
 
-/* App Footer */
-.app-footer {
-  margin-top: 40px;
-  padding: 20px;
-  text-align: center;
-  color: #666;
-  font-size: 12px;
-  border-top: 1px solid #ddd9cc;
-}
-
 /* Responsive */
 @media (max-width: 900px) {
   .product-detail-wrapper {

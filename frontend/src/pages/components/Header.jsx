@@ -25,6 +25,7 @@ export default function Header(){
           <div className='header-item'></div>
 
           <div className='header-item right-side'>
+            <div><button onClick={() => navigate('/addproduct')} className="search-button" style={{width: '150px'}}>Dodaj ogłoszenie</button></div>
             <div>
           {/*TODO FUNCTIONALITY FOR USER DISPLAY*/}
           {/*ADDITIONAL: SITES/BUTTONS FOR FOLLOWED OFFERS/FOR SALE, SOLD ITEMS, BOUGHT ITEMS*/}
@@ -49,7 +50,6 @@ export default function Header(){
               <div className="dropdown-menu">
                 <button onClick={() => navigate('/mylistings')} className="dropdown-link">Moje ogłoszenia</button>
                 <button onClick={() => navigate('/purchase-history')} className="dropdown-link">Historia zakupów</button>
-                <button onClick={() => navigate('/addproduct')} className="dropdown-link">Dodaj ogłoszenie</button>
                 <button onClick={handleLogout} className="dropdown-link">Wyloguj się</button>
               </div>
             )}

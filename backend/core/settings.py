@@ -91,10 +91,10 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),          # lub inna nazwa użytkownika
-        'PASSWORD': os.getenv('DB_PASSWORD'),   # hasło do bazy
-        'HOST': os.getenv('DB_HOST'),         # 'localhost' jeśli baza jest u Ciebie, lub adres IP/URL z chmury
-        'PORT': os.getenv('DB_PORT'),              # domyślny port PostgreSQL
+        'USER': os.getenv('DB_USER'),               # nazwa użytkownika
+        'PASSWORD': os.getenv('DB_PASSWORD'),       # hasło do bazy
+        'HOST': os.getenv('DB_HOST'),               # 'localhost' jeśli baza jest u Ciebie, lub adres IP/URL z chmury
+        'PORT': os.getenv('DB_PORT'),               # domyślny port PostgreSQL
     }
 }
 
@@ -116,7 +116,7 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
     },
     {
-        'NAME': 'api.validators.ComplexPasswordValidator', # <-- Twój nowy walidator
+        'NAME': 'api.validators.ComplexPasswordValidator',
     },
 ]
 

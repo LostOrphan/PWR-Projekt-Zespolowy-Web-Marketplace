@@ -1,3 +1,114 @@
+from django.test import TestCase
+from rest_framework.test import APIClient
+from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
+from .models import Category, Location, Listing, ListingImage, ListingStatus
+
+
+class APISmokeTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        User = get_user_model()
+        self.user = User.objects.create_user(email='seller@test.com', password='Password1!')
+
+        # Create basic dictionaries
+        self.cat1 = Category.objects.create(name='Cat A')
+        self.cat2 = Category.objects.create(name='Cat B')
+        self.loc1 = Location.objects.create(city='CityX', country='PL')
+
+    def authenticate(self):
+        # Force-authenticate the test client with created user
+        self.client.force_authenticate(user=self.user)
+
+    def test_create_listing_with_invalid_image_aborts_listing(self):
+        self.authenticate()
+
+        url = '/api/listings/'
+
+        data = {
+            'title': 'Test listing invalid image',
+            'category': str(self.cat1.id),
+            'price': '12.00',
+            'description': 'desc',
+            'location': str(self.loc1.id),
+        }
+
+        # Invalid by extension (gif) and/or content
+        bad_image = SimpleUploadedFile('bad.gif', b'GIF87a', content_type='image/gif')
+
+        response = self.client.post(url, data={**data, 'uploaded_images': [bad_image]}, format='multipart')
+
+        # Expect validation error and no listing created
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Listing.objects.count(), 0)
+
+    def test_create_listing_with_valid_images_creates_listing(self):
+        self.authenticate()
+
+        url = '/api/listings/'
+        data = {
+            'title': 'Test listing ok image',
+            'category': str(self.cat1.id),
+            'price': '15.50',
+            'description': 'desc ok',
+            'location': str(self.loc1.id),
+        }
+
+        # Try to generate a small valid JPEG via Pillow; if Pillow not available, skip test
+        try:
+            from PIL import Image
+            from io import BytesIO
+            buf = BytesIO()
+            Image.new('RGB', (1, 1), color=(255, 0, 0)).save(buf, format='JPEG')
+            buf.seek(0)
+            img = SimpleUploadedFile('ok.jpg', buf.read(), content_type='image/jpeg')
+        except Exception:
+            self.skipTest('Pillow not available to generate test image')
+
+        response = self.client.post(url, data={**data, 'uploaded_images': [img]}, format='multipart')
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Listing.objects.count(), 1)
+        self.assertEqual(ListingImage.objects.count(), 1)
+
+    def test_listings_filter_by_category_endpoint(self):
+        # create two listings directly (bypass API) with different categories
+        active_status, _ = ListingStatus.objects.get_or_create(name='Aktywne')
+
+        l1 = Listing.objects.create(
+            seller=self.user,
+            category=self.cat1,
+            location=self.loc1,
+            title='L1',
+            price='10.00',
+            status=active_status
+        )
+
+        l2 = Listing.objects.create(
+            seller=self.user,
+            category=self.cat2,
+            location=self.loc1,
+            title='L2',
+            price='20.00',
+            status=active_status
+        )
+
+        url = f'/api/listings/?category={self.cat1.id}'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        results = data.get('results') if isinstance(data, dict) else data
+        # Expect only one listing in results and its category id to match
+        self.assertTrue(len(results) >= 1)
+        # Ensure every returned listing has category == cat1.id (could be nested dict; check id)
+        for item in results:
+            cat = item.get('category')
+            # category may be nested dict or id depending on serializer; handle both
+            if isinstance(cat, dict):
+                cid = cat.get('id')
+            else:
+                cid = cat
+            self.assertEqual(int(cid), self.cat1.id)
 from rest_framework.test import APITestCase
 from rest_framework import status
 from django.contrib.auth import get_user_model
@@ -592,14 +703,16 @@ class MarketplaceAPITests(APITestCase):
             response = self.client.post(self.register_url, {
                 'email': f'nowyuser{i}@example.com',
                 'password': 'StrongPassword123!',
-                'first_name': f'User{i}'
+                'first_name': f'User{i}',
+                'last_name': f'UserLast{i}'
             })
             self.assertNotEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
             
         response = self.client.post(self.register_url, {
             'email': 'nowyuser4@example.com',
             'password': 'StrongPassword123!',
-            'first_name': 'User4'
+            'first_name': 'User4',
+            'last_name': 'UserLast4'
         })
         self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
         

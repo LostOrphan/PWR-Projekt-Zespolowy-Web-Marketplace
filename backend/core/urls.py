@@ -33,7 +33,6 @@ if settings.DEBUG:
 
 if settings.DEBUG:
     from django.contrib import admin
-    # upewnij się, że masz zaimportowany schema_view ze Swaggera
     urlpatterns += [
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),

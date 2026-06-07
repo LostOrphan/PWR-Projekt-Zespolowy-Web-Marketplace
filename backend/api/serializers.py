@@ -1,9 +1,10 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.core.exceptions import ValidationError as DjangoValidationError
 from .models import Category, Location, Listing, ListingImage, ListingStatus
 from .models import Address
-from .models import Order, Listing, ListingStatus, DeliveryMethod
+from .models import Order, DeliveryMethod
 import django.contrib.auth.password_validation as validators
 
 User = get_user_model()
@@ -12,8 +13,7 @@ User = get_user_model()
 #       AUTORYZACJA I UŻYTKOWNIK
 # ==========================================
 class UserSerializer(serializers.ModelSerializer):
-    # Ustawiamy required=False, aby DRF nie wyrzucił błędu przed wejściem do metody validate.
-    # Bezpieczeństwo zapewnimy wewnątrz metody validate() poniżej.
+    # Required=False, aby DRF nie wyrzucił błędu przed wejściem do metody validate.
     password = serializers.CharField(
         write_only=True, 
         required=False,
@@ -40,8 +40,7 @@ class UserSerializer(serializers.ModelSerializer):
                     "password": "Hasło jest wymagane podczas rejestracji nowego użytkownika."
                 })
         
-        # 2. Sprawdzamy unikalność emaila (opcjonalne, Django zazwyczaj robi to samo, 
-        # ale warto to mieć tutaj dla czytelnych komunikatów)
+        # 2. Sprawdzamy unikalność emaila
         email = attrs.get('email')
         if email and User.objects.filter(email=email).exclude(pk=getattr(self.instance, 'pk', None)).exists():
             raise serializers.ValidationError({"email": "Użytkownik z tym adresem email już istnieje."})
@@ -56,7 +55,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         """Metoda wywoływana przy PUT/PATCH (Edycja profilu)"""
-        # Wyciągamy hasło z danych (jeśli zostało przesłane)
+        # Usuwamy hasło z danych (jeśli zostało przesłane)
         password = validated_data.pop('password', None)
         
         # Aktualizujemy pozostałe pola (first_name, last_name, email, phone_num)
@@ -92,6 +91,7 @@ class ListingStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = ListingStatus
         fields = '__all__'
+
 class DeliveryMethodSerializer(serializers.ModelSerializer):
     class Meta:
         model = DeliveryMethod
@@ -111,12 +111,13 @@ class SellerSerializer(serializers.ModelSerializer):
         model = User
         # Zwracamy tylko bezpieczne dane kontaktowe
         fields = ('id', 'first_name', 'last_name', 'email', 'phone_num', 'address')
+
 class PublicSellerSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'first_name']        
+
 class ListingSerializer(serializers.ModelSerializer):
-    # Zagnieżdżoną lista w formacie JSON (tylko do odczytu)
     images = ListingImageSerializer(many=True, read_only=True)
     seller = SellerSerializer(read_only=True)
     category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
@@ -126,6 +127,7 @@ class ListingSerializer(serializers.ModelSerializer):
         allow_null=True
     )
     phone_number = serializers.SerializerMethodField()
+    
     # Dodatkowe pole do przyjmowania plików zdjęć z frontendu (FormData)
     uploaded_images = serializers.ListField(
         child=serializers.ImageField(max_length=1000000, allow_empty_file=False, use_url=False),
@@ -145,6 +147,37 @@ class ListingSerializer(serializers.ModelSerializer):
             'images', 'uploaded_images'
         )
         read_only_fields = ('seller', 'status', 'created_at', 'updated_at')
+        
+        # Zapobiega możliwości wpisania samej spacji w polach adresowych
+        extra_kwargs = {
+            'street': {
+                'allow_blank': False,
+                'error_messages': {'blank': 'Ulica nie może składać się z samych spacji.'}
+            },
+            'building_number': {
+                'allow_blank': False,
+                'error_messages': {'blank': 'Numer budynku nie może składać się z samych spacji.'}
+            },
+            'apartment_number': {
+                'allow_blank': False,
+                'error_messages': {'blank': 'Numer lokalu nie może składać się z samych spacji.'}
+            }
+        }
+
+    def validate_uploaded_images(self, value):
+        """Zintegrowana walidacja zdjęć przed wejściem do metody create/update"""
+        if len(value) > 10:
+            raise serializers.ValidationError('Ogłoszenie może posiadać maksymalnie 10 zdjęć.')
+        
+        allowed_extensions = ['jpg', 'jpeg', 'png']
+        for image in value:
+            if hasattr(image, 'name'):
+                ext = image.name.split('.')[-1].lower()
+                if ext not in allowed_extensions:
+                    raise serializers.ValidationError(
+                        'Zdjęcia zawierają zły format. Dozwolone formaty to: png, jpg, jpeg.'
+                    )
+        return value
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -154,68 +187,72 @@ class ListingSerializer(serializers.ModelSerializer):
 
     def get_phone_number(self, obj):
         """Pobiera numer telefonu sprzedawcy i zwraca go w formacie maskowanym 123-xxx-xxx"""
-        # sięgamy do powiązanego użytkownika (sprzedawcy)
         phone = obj.seller.phone_num
         
         if not phone:
             return None
             
-        # Oczyszczamy string z ewentualnych spacji/myślników, by operować na samych cyfrach
         clean_phone = ''.join(c for c in str(phone) if c.isdigit())
         
-        # Jeśli numer ma poprawną długość, zwracamy pierwsze 3 cyfry + maskę
         if len(clean_phone) >= 3:
             return f"{clean_phone[:3]}-xxx-xxx"
             
         return clean_phone  
 
     def create(self, validated_data):
-        # Wyciągamy zdjęcia z danych, zanim zapis
         delivery_methods = validated_data.pop('delivery_methods', [])
         uploaded_images = validated_data.pop('uploaded_images', [])
         
-        # Tworzenie ogłoszenia
+        # 1. Tworzymy samo ogłoszenie
         listing = Listing.objects.create(**validated_data)
+        
+        # 2. Dodajemy metody dostawy
         if delivery_methods:
             listing.delivery_methods.set(delivery_methods)
-        # Zapisujemy przesłane zdjęcia i przypisujemy je do ogłoszenia
+
+        # 3. Zapisujemy prawidłowe zdjęcia
         for index, image in enumerate(uploaded_images):
-            # Pierwsze dodane zdjęcie oznaczamy jako główne 
-            is_primary = True if index == 0 else False
             ListingImage.objects.create(
-                listing=listing, 
-                image=image, 
-                display_order=index, 
-                is_primary=is_primary
+                listing=listing,
+                image=image,
+                display_order=index,
+                is_primary=(index == 0)
             )
-            
+
         return listing
+
     def update(self, instance, validated_data):
         # 1. Wyciągamy dane specjalne
         delivery_methods = validated_data.pop('delivery_methods', None)
         uploaded_images = validated_data.pop('uploaded_images', [])
 
-        # 2. Aktualizujemy podstawowe pola ogłoszenia (tytuł, opis, cena...)
+        # 2. Aktualizujemy podstawowe pola ogłoszenia
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        # 3. Obsługa metod dostawy (ManyToMany)
+        # 3. Obsługa metod dostawy
         if delivery_methods is not None:
             instance.delivery_methods.set(delivery_methods)
 
-        # 4. Obsługa nowych zdjęć (jeśli przesłano)
+        # 4. Obsługa nowych zdjęć (dodawanie na końcu kolejki)
         if uploaded_images:
-            # Opcjonalnie: możesz tu zdecydować, czy stare zdjęcia zostają, czy są usuwane
+            last_image = instance.images.order_by('display_order').last()
+            start_index = (last_image.display_order + 1) if last_image else 0
+            
             for index, image in enumerate(uploaded_images):
                 ListingImage.objects.create(
                     listing=instance,
                     image=image,
-                    display_order=index, # Warto by było tu sprawdzić ostatni index istniejących zdjęć
+                    display_order=start_index + index,
                     is_primary=False 
                 )
 
         return instance
+
+# ==========================================
+#                 ZAMÓWIENIA
+# ==========================================
 class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
@@ -242,12 +279,12 @@ class OrderSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        # 1. Zamiast pobierać listing zwyczajnie, pobieramy go z bazodanową blokadą wiersza!
+        # 1. Zamiast pobierać listing zwyczajnie, pobieramy go z blokadą wiersza w db
         # Żadne inne zapytanie nie zmodyfikuje tego ogłoszenia, dopóki ta transakcja trwa.
         listing_id = validated_data['listing'].id
         listing = Listing.objects.select_for_update().get(id=listing_id)
         
-        # 2. Upewniamy się PONOWNIE, że po założeniu blokady ogłoszenie nadal jest aktywne
+        # 2. Upewniamy się, że po założeniu blokady ogłoszenie nadal jest aktywne
         if listing.status.name != "Aktywne":
             raise serializers.ValidationError({"listing": "Ogłoszenie zostało właśnie kupione przez kogoś innego."})
 
@@ -257,11 +294,12 @@ class OrderSerializer(serializers.ModelSerializer):
         
         # 3. Zapis i zmiana statusu
         order = super().create(validated_data)
+        
         # 4. Zmiana statusu ogłoszenia na "Zakończone"
         try:
             completed_status = ListingStatus.objects.get(name="Zakończone")
         except ListingStatus.DoesNotExist:
-            # Fallback (bezpiecznik), gdyby słownik nie był poprawnie zainicjowany
+            # Fallback, gdyby słownik nie był poprawnie zainicjowany
             completed_status = ListingStatus.objects.create(name="Zakończone")
             
         listing.status = completed_status

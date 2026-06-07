@@ -173,58 +173,47 @@ class ListingSerializer(serializers.ModelSerializer):
         # Wyciągamy zdjęcia z danych, zanim zapis
         delivery_methods = validated_data.pop('delivery_methods', [])
         uploaded_images = validated_data.pop('uploaded_images', [])
-
-        with transaction.atomic():
-            listing = Listing.objects.create(**validated_data)
-            if delivery_methods:
-                listing.delivery_methods.set(delivery_methods)
-                
-            for index, image in enumerate(uploaded_images):
-                is_primary = True if index == 0 else False
-                listing_image = ListingImage(
-                    listing=listing,
-                    image=image,
-                    display_order=index,
-                    is_primary=is_primary
-                )
-                try:
-                    listing_image.full_clean()
-                except DjangoValidationError as exc:
-                    raise serializers.ValidationError({'uploaded_images': exc.message_dict if hasattr(exc, 'message_dict') else exc.messages})
-                listing_image.save()
-
+        
+        # Tworzenie ogłoszenia
+        listing = Listing.objects.create(**validated_data)
+        if delivery_methods:
+            listing.delivery_methods.set(delivery_methods)
+        # Zapisujemy przesłane zdjęcia i przypisujemy je do ogłoszenia
+        for index, image in enumerate(uploaded_images):
+            # Pierwsze dodane zdjęcie oznaczamy jako główne 
+            is_primary = True if index == 0 else False
+            ListingImage.objects.create(
+                listing=listing, 
+                image=image, 
+                display_order=index, 
+                is_primary=is_primary
+            )
+            
         return listing
-
     def update(self, instance, validated_data):
+        # 1. Wyciągamy dane specjalne
         delivery_methods = validated_data.pop('delivery_methods', None)
         uploaded_images = validated_data.pop('uploaded_images', [])
 
-        with transaction.atomic():
-            for attr, value in validated_data.items():
-                setattr(instance, attr, value)
-            instance.save()
+        # 2. Aktualizujemy podstawowe pola ogłoszenia (tytuł, opis, cena...)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
 
-            if delivery_methods is not None:
-                instance.delivery_methods.set(delivery_methods)
+        # 3. Obsługa metod dostawy (ManyToMany)
+        if delivery_methods is not None:
+            instance.delivery_methods.set(delivery_methods)
 
-            if uploaded_images:
-                # Upewniamy się, że nowe zdjęcia dodają się NA KOŃCU, a nie od indexu 0
-                last_image = instance.images.order_by('display_order').last()
-                start_index = (last_image.display_order + 1) if last_image else 0
-                
-                for index, image in enumerate(uploaded_images):
-                    listing_image = ListingImage(
-                        listing=instance,
-                        image=image,
-                        display_order=start_index + index,
-                        is_primary=False
-                    )
-                    try:
-                        listing_image.full_clean()
-                    except DjangoValidationError as exc:
-                        raise serializers.ValidationError({'uploaded_images': exc.message_dict if hasattr(exc, 'message_dict') else exc.messages})
-                    
-                    listing_image.save() # Zostawiony jeden zapis (usunięty duplikat Objects.create)
+        # 4. Obsługa nowych zdjęć (jeśli przesłano)
+        if uploaded_images:
+            # Opcjonalnie: możesz tu zdecydować, czy stare zdjęcia zostają, czy są usuwane
+            for index, image in enumerate(uploaded_images):
+                ListingImage.objects.create(
+                    listing=instance,
+                    image=image,
+                    display_order=index, # Warto by było tu sprawdzić ostatni index istniejących zdjęć
+                    is_primary=False 
+                )
 
         return instance
 class OrderSerializer(serializers.ModelSerializer):

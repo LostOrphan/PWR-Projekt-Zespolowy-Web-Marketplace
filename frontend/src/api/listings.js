@@ -28,13 +28,25 @@ const fetchWithAuthRefresh = async (url, options = {}) => {
   return response
 }
 
+const normalizeListResponse = (data) => {
+  if (Array.isArray(data)) {
+    return data
+  }
+
+  if (data && typeof data === 'object') {
+    return data.results || []
+  }
+
+  return []
+}
+
 export const getCategories = async () => {
   try {
     const response = await fetch(API_ENDPOINTS.categories)
     const data = await response.json()
 
     if (response.status === 200) {
-      return { success: true, data: data.results || [] }
+      return { success: true, data: normalizeListResponse(data) }
     } else {
       return { success: false, error: 'Błąd przy pobieraniu kategorii' }
     }
@@ -46,24 +58,14 @@ export const getCategories = async () => {
 
 export const getLocations = async () => {
   try {
-    const allResults = []
-    let page = 1
-    let hasMore = true
+    const response = await fetch(API_ENDPOINTS.locations)
+    const data = await response.json()
 
-    while (hasMore) {
-      const response = await fetch(`${API_ENDPOINTS.locations}?page=${page}`)
-      const data = await response.json()
-
-      if (response.status === 200) {
-        allResults.push(...(data.results || []))
-        hasMore = !!data.next
-        page++
-      } else {
-        return { success: false, error: 'Błąd przy pobieraniu lokalizacji' }
-      }
+    if (response.status === 200) {
+      return { success: true, data: normalizeListResponse(data) }
+    } else {
+      return { success: false, error: 'Błąd przy pobieraniu lokalizacji' }
     }
-
-    return { success: true, data: allResults }
   } catch (err) {
     console.error('Get locations error:', err)
     return { success: false, error: 'Błąd połączenia' }
@@ -213,7 +215,7 @@ export const createListing = async (listingData, token) => {
     if (response.status === 201) {
       return { success: true, data }
     } else if (response.status === 400) {
-      const errors = Object.values(data).flat().join(', ')
+      const errors = Object.values(data).flat().join(' ')
       return { success: false, error: errors || 'Błąd walidacji' }
     } else if (response.status === 401) {
       return { success: false, error: 'Brak autoryzacji' }
@@ -304,7 +306,7 @@ export const updateListing = async (id, listingData, token) => {
     if (response.status === 200) {
       return { success: true, data }
     } else if (response.status === 400) {
-      const errors = Object.values(data).flat().join(', ')
+      const errors = Object.values(data).flat().join(' ')
       return { success: false, error: errors || 'Błąd walidacji' }
     } else if (response.status === 401) {
       return { success: false, error: 'Brak autoryzacji' }
@@ -361,7 +363,7 @@ export const getDeliveryMethods = async () => {
     const data = await response.json()
 
     if (response.status === 200) {
-      return { success: true, data: data.results || [] }
+      return { success: true, data: normalizeListResponse(data) }
     } else {
       return { success: false, error: 'Błąd przy pobieraniu metod dostawy' }
     }
@@ -400,7 +402,7 @@ export const createOrder = async (orderData, token) => {
       
       return { success: true, data }
     } else if (response.status === 400) {
-      const errors = Object.values(data).flat().join(', ')
+      const errors = Object.values(data).flat().join(' ')
       return { success: false, error: errors || 'Błąd walidacji' }
     } else if (response.status === 401) {
       return { success: false, error: 'Brak autoryzacji' }
@@ -428,7 +430,7 @@ export const getUserOrders = async (token) => {
     const data = await response.json()
 
     if (response.status === 200) {
-      return { success: true, data: data.results || [] }
+      return { success: true, data: normalizeListResponse(data) }
     } else if (response.status === 401) {
       return { success: false, error: 'Brak autoryzacji' }
     } else {

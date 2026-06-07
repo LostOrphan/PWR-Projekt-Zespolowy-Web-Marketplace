@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from rest_framework import generics, viewsets, permissions
+from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth import get_user_model
 from .models import Listing, Category, Location, ListingImage, DeliveryMethod
 from .serializers import (
@@ -48,7 +49,6 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
-        # Ten widok zawsze zwraca dane aktualnie zalogowanego użytkownika
         return self.request.user
 
     @extend_schema(
@@ -175,6 +175,7 @@ class ListingViewSet(viewsets.ModelViewSet):
     queryset = Listing.objects.all().order_by('-created_at')
     serializer_class = ListingSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+    pagination_class = PageNumberPagination
     
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['category', 'location', 'status']
@@ -265,11 +266,10 @@ class ListingViewSet(viewsets.ModelViewSet):
             404: OpenApiResponse(description="Zdjęcie nie istnieje lub nie należy do tego ogłoszenia.")
         }
     )
-    # url_path pozwala na złapanie ID zdjęcia bezpośrednio z adresu URL
+    # url_path lapie ID zdjęcia bezpośrednio z adresu URL
     @action(detail=True, methods=['delete'], url_path=r'images/(?P<image_pk>[^/.]+)')
     def delete_image(self, request, pk=None, image_pk=None):
         # 1. Pobieramy ogłoszenie. Użycie get_object() automatycznie uruchamia 
-        # walidację uprawnień (IsOwnerOrReadOnly), więc nikt obcy tu nie wejdzie.
         listing = self.get_object()
         
         try:
@@ -277,11 +277,7 @@ class ListingViewSet(viewsets.ModelViewSet):
             image_to_delete = ListingImage.objects.get(pk=image_pk, listing=listing)
             
             # 3. Usuwamy zdjęcie z bazy danych (i z dysku, jeśli masz odpowiednio 
-            # skonfigurowany model lub używasz biblioteki django-cleanup)
             image_to_delete.delete()
-            
-            # (Opcjonalnie) Jeśli usunięte zdjęcie było główne (is_primary=True), 
-            # możesz dodać logikę ustawiającą is_primary=True dla pierwszego z pozostałych zdjęć
             
             return Response(status=http_status.HTTP_204_NO_CONTENT)
             
@@ -303,7 +299,6 @@ class ListingViewSet(viewsets.ModelViewSet):
     def reveal_phone(self, request, pk=None):
         listing = self.get_object()
         
-        # Pobieramy pełny numer telefonu z modelu CustomUser
         full_phone = listing.seller.phone_num
         
         if not full_phone:
@@ -325,7 +320,5 @@ class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Najważniejsza linijka dla historii zakupów!
-        # Zalogowany użytkownik po wejściu pod GET /api/orders/ 
-        # zobaczy TYLKO swoje zakupy, posortowane od najnowszego.
+        # Zalogowany użytkownik po wejściu pod GET /api/orders/  zobaczy tylko swoje zakupy, posortowane od najnowszego.
         return Order.objects.filter(buyer=self.request.user).select_related('listing', 'delivery_method')

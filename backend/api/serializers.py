@@ -220,7 +220,6 @@ class ListingSerializer(serializers.ModelSerializer):
             )
 
         return listing
-
     def update(self, instance, validated_data):
         # 1. Wyciągamy dane specjalne
         delivery_methods = validated_data.pop('delivery_methods', None)

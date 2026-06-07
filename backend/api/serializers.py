@@ -5,7 +5,7 @@ from .models import Category, Location, Listing, ListingImage, ListingStatus
 from .models import Address
 from .models import Order, Listing, ListingStatus, DeliveryMethod
 import django.contrib.auth.password_validation as validators
-
+from django.core.exceptions import ValidationError as DjangoValidationError
 User = get_user_model()
 
 # ==========================================
@@ -145,6 +145,28 @@ class ListingSerializer(serializers.ModelSerializer):
             'images', 'uploaded_images'
         )
         read_only_fields = ('seller', 'status', 'created_at', 'updated_at')
+        
+        # Wymuszamy aby puste spacje wyrzucały odpowiedni komunikat walidacji
+        extra_kwargs = {
+            'street': {
+                'allow_blank': False,
+                'error_messages': {
+                    'blank': 'Ulica nie może składać się z samych spacji.'
+                }
+            },
+            'building_number': {
+                'allow_blank': False,
+                'error_messages': {
+                    'blank': 'Numer budynku nie może składać się z samych spacji.'
+                }
+            },
+            'apartment_number': {
+                'allow_blank': False,
+                'error_messages': {
+                    'blank': 'Numer lokalu nie może składać się z samych spacji.'
+                }
+            }
+        }
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

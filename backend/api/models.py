@@ -7,6 +7,7 @@ from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
+import re
 # Menadżer Użytkownika 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password, **extra_fields):
@@ -84,6 +85,27 @@ class Location(models.Model):
         if self.region:
             return f"{self.city} ({self.region}), {self.country}"
         return f"{self.city}, {self.country}"
+def validate_street(value):
+    if value is None:
+        return
+    stripped = value.strip()
+    if not stripped:
+        # Zmieniono tekst:
+        raise ValidationError("Ulica nie może składać się z samych spacji.")
+    if not re.match(r'^[A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż]', stripped):
+        raise ValidationError("Ulica musi zaczynać się literą.")
+
+
+def validate_address_number(value):
+    if value is None:
+        return
+    stripped = value.strip()
+    if not stripped:
+        # Zmieniono tekst:
+        raise ValidationError("Numer budynku/mieszkania nie może składać się z samych spacji.")
+    if not re.match(r'^\d+[a-zA-ZĄĆĘŁŃÓŚŹŻąćęłńóśźż]*$', stripped):
+        raise ValidationError("Numer musi zaczynać się od cyfry i może zawierać tylko cyfry oraz litery (np. 8, 12A, 15bis). Znaki specjalne i spacje są niedozwolone.")
+
 class Address(models.Model):
     # Relacja OneToOne: Każdy użytkownik może mieć dokładnie jeden domyślny adres
     user = models.OneToOneField(

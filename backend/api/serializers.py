@@ -152,15 +152,15 @@ class ListingSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'street': {
                 'allow_blank': False,
-                'error_messages': {'blank': 'Ulica nie może składać się z samych spacji.'}
+                'error_messages': {'blank': 'Ulica musi być albo pusta albo zawierać poprawne dane.'}
             },
             'building_number': {
                 'allow_blank': False,
-                'error_messages': {'blank': 'Numer budynku nie może składać się z samych spacji.'}
+                'error_messages': {'blank': 'Numer budynku musi być albo pusta albo zawierać poprawne dane.'}
             },
             'apartment_number': {
                 'allow_blank': False,
-                'error_messages': {'blank': 'Numer lokalu nie może składać się z samych spacji.'}
+                'error_messages': {'blank': 'Numer lokalu musi być albo pusta albo zawierać poprawne dane.'}
             }
         }
 

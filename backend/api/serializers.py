@@ -248,7 +248,34 @@ class ListingSerializer(serializers.ModelSerializer):
                 )
 
         return instance
+class ListingListSerializer(serializers.ModelSerializer):
+    """
+    Uproszczony serializator dla endpointu listy ogłoszeń.
+    Zwraca tylko podstawowe dane i jedno (główne) zdjęcie.
+    """
+    category = CategorySerializer(read_only=True)
+    location = LocationSerializer(read_only=True)
+    images = serializers.SerializerMethodField()
+    first_image = serializers.SerializerMethodField()
 
+    class Meta:
+        model = Listing
+        fields = ('id', 'title', 'price', 'category', 'location', 'created_at', 'images', 'first_image')
+
+    def _serialize_primary_image(self, obj):
+        image = obj.images.filter(is_primary=True).first()
+        if not image:
+            image = obj.images.order_by('display_order', '-created_at').first()
+        if not image:
+            return None
+        return ListingImageSerializer(image, context=self.context).data
+
+    def get_images(self, obj):
+        primary_image = self._serialize_primary_image(obj)
+        return [primary_image] if primary_image else []
+
+    def get_first_image(self, obj):
+        return self._serialize_primary_image(obj)
 # ==========================================
 #                 ZAMÓWIENIA
 # ==========================================

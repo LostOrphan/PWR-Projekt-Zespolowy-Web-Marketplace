@@ -163,7 +163,7 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '1000/day',
         'login': '10/minute',   
-        'user': '5000/day',   
+        'user': '2000/hour',   
         'register': '20/minute',
         'create_offer': '10/hour', 
         'phoneNumReveal': '20/minute'

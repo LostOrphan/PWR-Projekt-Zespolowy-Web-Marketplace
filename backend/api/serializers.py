@@ -1,9 +1,10 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.core.exceptions import ValidationError as DjangoValidationError
 from .models import Category, Location, Listing, ListingImage, ListingStatus
 from .models import Address
-from .models import Order, Listing, ListingStatus, DeliveryMethod
+from .models import Order, DeliveryMethod
 import django.contrib.auth.password_validation as validators
 
 User = get_user_model()
@@ -92,6 +93,7 @@ class ListingStatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = ListingStatus
         fields = '__all__'
+        
 class DeliveryMethodSerializer(serializers.ModelSerializer):
     class Meta:
         model = DeliveryMethod
@@ -111,10 +113,12 @@ class SellerSerializer(serializers.ModelSerializer):
         model = User
         # Zwracamy tylko bezpieczne dane kontaktowe
         fields = ('id', 'first_name', 'last_name', 'email', 'phone_num', 'address')
+        
 class PublicSellerSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'first_name']        
+        
 class ListingSerializer(serializers.ModelSerializer):
     # Zagnieżdżoną lista w formacie JSON (tylko do odczytu)
     images = ListingImageSerializer(many=True, read_only=True)
@@ -130,8 +134,14 @@ class ListingSerializer(serializers.ModelSerializer):
     uploaded_images = serializers.ListField(
         child=serializers.ImageField(max_length=1000000, allow_empty_file=False, use_url=False),
         write_only=True,
-        required=False
+        required=False,
+        max_length=10
     )
+
+    def validate_uploaded_images(self, value):
+        if len(value) > 10:
+            raise serializers.ValidationError('Ogłoszenie może posiadać maksymalnie 10 zdjęć.')
+        return value
 
     class Meta:
         model = Listing
@@ -145,8 +155,30 @@ class ListingSerializer(serializers.ModelSerializer):
             'images', 'uploaded_images'
         )
         read_only_fields = ('seller', 'status', 'created_at', 'updated_at')
+        
+        extra_kwargs = {
+            'street': {
+                'allow_blank': False,
+                'error_messages': {
+                    'blank': 'Ulica nie może składać się z samych spacji.'
+                }
+            },
+            'building_number': {
+                'allow_blank': False,
+                'error_messages': {
+                    'blank': 'Numer budynku nie może składać się z samych spacji.'
+                }
+            },
+            'apartment_number': {
+                'allow_blank': False,
+                'error_messages': {
+                    'blank': 'Numer lokalu nie może składać się z samych spacji.'
+                }
+            }
+        }
 
     def to_representation(self, instance):
+        """Nadpisanie outputu by dla powiązań zwracać obiekty zamiast ID"""
         data = super().to_representation(instance)
         data['category'] = CategorySerializer(instance.category).data
         data['location'] = LocationSerializer(instance.location).data if instance.location else None
@@ -154,68 +186,78 @@ class ListingSerializer(serializers.ModelSerializer):
 
     def get_phone_number(self, obj):
         """Pobiera numer telefonu sprzedawcy i zwraca go w formacie maskowanym 123-xxx-xxx"""
-        # sięgamy do powiązanego użytkownika (sprzedawcy)
         phone = obj.seller.phone_num
         
         if not phone:
             return None
             
-        # Oczyszczamy string z ewentualnych spacji/myślników, by operować na samych cyfrach
         clean_phone = ''.join(c for c in str(phone) if c.isdigit())
         
-        # Jeśli numer ma poprawną długość, zwracamy pierwsze 3 cyfry + maskę
         if len(clean_phone) >= 3:
             return f"{clean_phone[:3]}-xxx-xxx"
             
         return clean_phone  
 
     def create(self, validated_data):
-        # Wyciągamy zdjęcia z danych, zanim zapis
         delivery_methods = validated_data.pop('delivery_methods', [])
         uploaded_images = validated_data.pop('uploaded_images', [])
         
-        # Tworzenie ogłoszenia
         listing = Listing.objects.create(**validated_data)
         if delivery_methods:
             listing.delivery_methods.set(delivery_methods)
-        # Zapisujemy przesłane zdjęcia i przypisujemy je do ogłoszenia
+            
         for index, image in enumerate(uploaded_images):
-            # Pierwsze dodane zdjęcie oznaczamy jako główne 
             is_primary = True if index == 0 else False
-            ListingImage.objects.create(
-                listing=listing, 
-                image=image, 
-                display_order=index, 
+            listing_image = ListingImage(
+                listing=listing,
+                image=image,
+                display_order=index,
                 is_primary=is_primary
             )
+            try:
+                listing_image.full_clean()
+            except DjangoValidationError as exc:
+                raise serializers.ValidationError({'uploaded_images': exc.message_dict if hasattr(exc, 'message_dict') else exc.messages})
+            listing_image.save()
             
         return listing
+
     def update(self, instance, validated_data):
-        # 1. Wyciągamy dane specjalne
         delivery_methods = validated_data.pop('delivery_methods', None)
         uploaded_images = validated_data.pop('uploaded_images', [])
 
-        # 2. Aktualizujemy podstawowe pola ogłoszenia (tytuł, opis, cena...)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        # 3. Obsługa metod dostawy (ManyToMany)
         if delivery_methods is not None:
             instance.delivery_methods.set(delivery_methods)
 
-        # 4. Obsługa nowych zdjęć (jeśli przesłano)
         if uploaded_images:
-            # Opcjonalnie: możesz tu zdecydować, czy stare zdjęcia zostają, czy są usuwane
+            # Upewniamy się, że nowe zdjęcia dodają się NA KOŃCU, a nie od indexu 0
+            last_image = instance.images.order_by('display_order').last()
+            start_index = (last_image.display_order + 1) if last_image else 0
+            
             for index, image in enumerate(uploaded_images):
-                ListingImage.objects.create(
+                listing_image = ListingImage(
                     listing=instance,
                     image=image,
-                    display_order=index, # Warto by było tu sprawdzić ostatni index istniejących zdjęć
-                    is_primary=False 
+                    display_order=start_index + index,
+                    is_primary=False
                 )
+                try:
+                    listing_image.full_clean()
+                except DjangoValidationError as exc:
+                    raise serializers.ValidationError({'uploaded_images': exc.message_dict if hasattr(exc, 'message_dict') else exc.messages})
+                
+                listing_image.save() # Zostawiony jeden zapis (usunięty duplikat Objects.create)
 
         return instance
+
+
+# ==========================================
+#                 ZAMÓWIENIA
+# ==========================================
 class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
@@ -257,6 +299,7 @@ class OrderSerializer(serializers.ModelSerializer):
         
         # 3. Zapis i zmiana statusu
         order = super().create(validated_data)
+        
         # 4. Zmiana statusu ogłoszenia na "Zakończone"
         try:
             completed_status = ListingStatus.objects.get(name="Zakończone")

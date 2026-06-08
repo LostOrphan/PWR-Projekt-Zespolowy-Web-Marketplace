@@ -80,12 +80,13 @@ export const getListings = async (filters = {}, fetchAll = false) => {
 
     if (response.status === 200) {
       if (!fetchAll) {
-        return { success: true, data: data.results || [] }
+        // ZMIANA: Zwracaj cały obiekt 'data', a nie tylko 'data.results'
+        return { success: true, data: data } 
       }
 
-      // Fetch all pages if fetchAll is true
       const allResults = [...(data.results || [])]
       let nextUrl = data.next
+      // ... reszta pętli bez zmian
 
       while (nextUrl) {
         const nextResponse = await fetch(nextUrl)

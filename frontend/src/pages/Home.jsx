@@ -254,8 +254,8 @@ export default function Home() {
                     images ={listing.images}
                     title={listing.title} 
                     price={listing.price}
-                    city={listing.location.city}
-                    date={listing.created_at}
+                    city={listing.location?.city || ''}
+                    date={listing.created_at?.slice(0, 10)}
                     />
                 ))
               ) : (

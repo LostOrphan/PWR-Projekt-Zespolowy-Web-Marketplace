@@ -42,7 +42,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     
-    phone_num = models.CharField(max_length=15, blank=True, null=True)
+    phone_num = models.CharField(max_length=15)#, blank=True, null=True)
 
     # Pola wymagane przez system autoryzacji Django
     is_active = models.BooleanField(default=True)
@@ -118,9 +118,9 @@ class Address(models.Model):
     # Powiązanie z istniejącym modelem Location (Miasto, Województwo, Kraj)
     location = models.ForeignKey(
         'Location', 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True,
+        on_delete=models.PROTECT, 
+        # null=True, 
+        # blank=True,
         verbose_name="Lokalizacja (Miasto)"
     )
     
@@ -176,7 +176,7 @@ class Listing(models.Model):
     # Relacja do CustomUser. settings.AUTH_USER_MODEL 
     seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='listings')
     category = models.ForeignKey(Category, on_delete=models.RESTRICT, related_name='listings')
-    location = models.ForeignKey(Location, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Miasto")
+    location = models.ForeignKey(Location, on_delete=models.PROTECT, verbose_name="Miasto")
     street = models.CharField(
         max_length=255,
         blank=False,
@@ -215,7 +215,6 @@ class Listing(models.Model):
     # Relacja wiele do wielu metod dostaw
     delivery_methods = models.ManyToManyField(
         'DeliveryMethod', 
-        blank=True, 
         verbose_name="Metody dostawy"
     )
     # Odpowiednik DECIMAL(10, 2) CHECK (price >= 0)

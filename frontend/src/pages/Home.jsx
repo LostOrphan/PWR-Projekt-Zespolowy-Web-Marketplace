@@ -253,7 +253,10 @@ export default function Home() {
                     id={listing.id} 
                     images ={listing.images}
                     title={listing.title} 
-                    price={listing.price}/>
+                    price={listing.price}
+                    city={listing.location.city}
+                    date={listing.created_at}
+                    />
                 ))
               ) : (
                 <p style={{gridColumn: '1 / -1', textAlign: 'center', padding: '2rem'}}>Brak ogłoszeń spełniających kryteria filtru</p>

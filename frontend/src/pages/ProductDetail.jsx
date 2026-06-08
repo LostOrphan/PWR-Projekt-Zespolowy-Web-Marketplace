@@ -36,7 +36,7 @@ export default function ProductDetail() {
         setCategories(categoriesResult.data)
       }
       setLoading(false)
-      setDescription(listing.description)
+      setDescription(listingResult.data.description)
     }
     fetchData()
     setCurrentImageIndex(0)

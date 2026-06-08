@@ -4,7 +4,7 @@ import '../../styles/Home.css';
 import { useNavigate } from 'react-router-dom'
 import userAvatar from '../../assets/user.png'
 
-export default function Listing({id, images, title, price}){
+export default function Listing({id, images, title, price, city, date}){
 const navigate = useNavigate()
 
   return (
@@ -30,7 +30,8 @@ const navigate = useNavigate()
                       />
                     )}
                     <p className="product-name">{title}</p>
-                    
+                    <p className="product-name">{city}</p>
+                    <p className="product-name">{date}</p>
                     <p className="product-price">{price} zł</p>
                   </div>
   );

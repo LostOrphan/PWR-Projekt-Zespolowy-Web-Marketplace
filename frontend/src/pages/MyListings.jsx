@@ -76,7 +76,7 @@ export default function MyListings() {
                                   />
                               ))
                             ) : (
-                              <p>Nie masz żadnych ogłoszeń. <button onClick={() => navigate('/addproduct')} style={{backgroundColor: 'transparent', border: 'none', color: '#007bff', cursor: 'pointer', textDecoration: 'underline'}}>Dodaj pierwsze ogłoszenie</button></p>
+                              <p>Nie masz żadnych ogłoszeń. <button className="no-own-listings" onClick={() => navigate('/addproduct')} >Dodaj pierwsze ogłoszenie</button></p>
                             )}
                           </div>
           </div>

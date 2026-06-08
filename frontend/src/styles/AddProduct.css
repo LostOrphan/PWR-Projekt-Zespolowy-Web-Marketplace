@@ -214,14 +214,15 @@ textarea {
   width: 16px !important;
   height: 16px !important;
   cursor: pointer;
-  flex-shrink: 0;
+  flex-shrink: 0 !important;
   background-color: #ebe7dd;
   border: 1px solid #ccc;
   border-radius: 4px;
   appearance: none;
-  display: inline-grid;
+  display: inline-grid !important;
   place-content: center;
   transform: translateY(2px);
+  padding: 0;
 }
 
 .delivery-item .delivery-checkbox:checked {

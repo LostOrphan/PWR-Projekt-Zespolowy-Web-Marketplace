@@ -70,7 +70,10 @@ export default function MyListings() {
                                   id={listing.id} 
                                   images ={listing.images}
                                   title={listing.title} 
-                                  price={listing.price}/>
+                                  price={listing.price}
+                                  city={listing.location?.city || ''}
+                                  date={listing.created_at?.slice(0, 10)}
+                                  />
                               ))
                             ) : (
                               <p>Nie masz żadnych ogłoszeń. <button onClick={() => navigate('/addproduct')} style={{backgroundColor: 'transparent', border: 'none', color: '#007bff', cursor: 'pointer', textDecoration: 'underline'}}>Dodaj pierwsze ogłoszenie</button></p>

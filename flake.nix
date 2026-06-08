@@ -58,6 +58,8 @@
                 pyjwt
                 inflection
                 uritemplate
+                requests
+                faker
 
                 jsonschema
                 jsonschema-specifications

@@ -1,5 +1,6 @@
 import '../styles/Login.css'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
 import { registerUser } from '../api/auth'
 
@@ -47,74 +48,72 @@ export default function Login() {
       <div className="login-card">
         <div className="login-form-wrapper">
           <h1>Zarejestruj się</h1>
-          {error && <div style={{color: '#d32f2f', marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#ffebee', borderRadius: '4px', fontSize: '0.9rem'}}>{error}</div>}
+          {error && <div className="error-message">{error}</div>}
+          {/* Input field width as inline because it does not want to function otherwise */}
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label htmlFor="name">Imię:</label>
-              <input
+              <input style = {{width: '100%'}}
                 type="text"
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                placeholder="Twoje imię"
+                placeholder="Imię"
               />
             </div>
             <div className="form-group">
-              <label htmlFor="surname">Nazwisko:</label>
-              <input
+              <input style = {{width: '100%'}}
                 type="text"
                 id="surname"
                 value={surname}
                 onChange={(e) => setSurname(e.target.value)}
                 required
-                placeholder="Twoje nazwisko"
+                placeholder="Nazwisko"
               />
             </div>
             <div className="form-group">
-              <label htmlFor="email">Email:</label>
-              <input
+              <input style = {{width: '100%'}}
                 type="email"
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="Twój email"
+                placeholder="E-mail"
               />
             </div>
             <div className="form-group">
-              <label htmlFor="phone">Numer telefonu:</label>
-              <input
+              <input style = {{width: '100%'}}
                 type="text"
                 id="phone"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="Twój numer telefonu"
+                placeholder="Numer telefonu"
               />
             </div>
             <div className="form-group">
-              <label htmlFor="password">Hasło:</label>
-              <input
+              <input style = {{width: '100%'}}
                 type="password"
                 id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                placeholder="Twoje hasło"
+                placeholder="Hasło"
               />
             </div>
             <div className="form-group">
-              <label htmlFor="password2">Powtórz hasło:</label>
-              <input
+              <input style = {{width: '100%'}}
                 type="password"
                 id="password2"
                 value={password2}
                 onChange={(e) => setPassword2(e.target.value)}
                 required
-                placeholder="Powtórz hasło"
+                placeholder="Powtórz Hasło"
               />
             </div>
             <button type="submit" className="login-btn">Zarejestruj się</button>
+            <p className="login-register-link">
+            <Link to="/login">Powróć do logowania</Link>
+          </p>
           </form>
         </div>
       </div>

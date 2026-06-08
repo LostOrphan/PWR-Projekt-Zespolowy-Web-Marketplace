@@ -32,19 +32,13 @@ export default function EditListing() {
   useEffect(() => {
     const fetchData = async () => {
       const catResult = await getCategories()
-      if (catResult.success) {
-        setCategories(catResult.data)
-      }
+      if (catResult.success) setCategories(catResult.data)
 
       const locResult = await getLocations()
-      if (locResult.success) {
-        setLocations(locResult.data)
-      }
+      if (locResult.success) setLocations(locResult.data)
 
       const delResult = await getDeliveryMethods()
-      if (delResult.success) {
-        setDeliveryMethods(delResult.data)
-      }
+      if (delResult.success) setDeliveryMethods(delResult.data)
 
       const listingResult = await getListingById(id)
       if (listingResult.success) {
@@ -69,7 +63,6 @@ export default function EditListing() {
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files)
     const newPreviews = files.map((file) => URL.createObjectURL(file))
-
     setImageFiles((prev) => [...prev, ...files])
     setPreviewImages((prev) => [...prev, ...newPreviews])
   }
@@ -97,7 +90,6 @@ export default function EditListing() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
-
     if (!category) {
       setError('Wybierz kategorię')
       return
@@ -105,16 +97,9 @@ export default function EditListing() {
 
     try {
       const result = await updateListing(id, {
-        title,
-        category,
-        price,
-        description,
-        location,
-        street,
-        buildingNumber,
-        apartmentNumber,
-        deliveryMethods: selectedDeliveryMethods,
-        imageFiles,
+        title, category, price, description, location,
+        street, buildingNumber, apartmentNumber,
+        deliveryMethods: selectedDeliveryMethods, imageFiles,
       }, cookies.token)
 
       if (result.success) {
@@ -123,7 +108,6 @@ export default function EditListing() {
         setError(result.error)
       }
     } catch (err) {
-      console.error('Edit listing error:', err)
       setError('Błąd połączenia z serwerem')
     }
   }
@@ -131,7 +115,6 @@ export default function EditListing() {
   const handleChangeStatus = async (newStatus) => {
     setStatusChanging(true)
     const result = await changeListingStatus(id, newStatus, cookies.token)
-    
     if (result.success) {
       navigate(`/product/${id}`)
     } else {
@@ -140,17 +123,15 @@ export default function EditListing() {
     }
   }
 
-  if (loading) {
-    return <div>Wczytywanie...</div>
-  }
+  if (loading) return <div className="loading-state">Wczytywanie...</div>
 
   return (
     <div className="login-container">
       <div className="login-card">
         <div className="login-form-wrapper-reg">
-        
           <h1>Edytuj ogłoszenie</h1>
-          {error && <div style={{color: '#d32f2f', marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#ffebee', borderRadius: '4px', fontSize: '0.9rem'}}>{error}</div>}
+          {error && <div className="error-message">{error}</div>}
+
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label htmlFor="title">Tytuł ogłoszenia:</label>
@@ -163,6 +144,7 @@ export default function EditListing() {
                 placeholder="np. ścianka działowa"
               />
             </div>
+
             <div className="form-group">
               <label htmlFor="category">Kategoria:</label>
               <select
@@ -178,78 +160,38 @@ export default function EditListing() {
                 ))}
               </select>
             </div>
+
             <div className="form-group">
-              Zdjęcia:
-              <div className='photos'>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageSelect}
-                  style={{ marginBottom: '1rem' }}
-                />
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-                  {existingImages.map((img) => (
-                    <div key={img.id} style={{ position: 'relative', display: 'inline-block' }}>
-                      <img
-                        src={img.image}
-                        alt="Existing"
-                        style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '4px' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeExistingImage(img.id)}
-                        style={{
-                          position: 'absolute',
-                          top: '-8px',
-                          right: '-8px',
-                          background: '#d32f2f',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '50%',
-                          width: '24px',
-                          height: '24px',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                  {previewImages.map((img, idx) => (
-                    <div key={idx} style={{ position: 'relative', display: 'inline-block' }}>
-                      <img
-                        src={img}
-                        alt={`Preview ${idx}`}
-                        style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '4px' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(idx)}
-                        style={{
-                          position: 'absolute',
-                          top: '-8px',
-                          right: '-8px',
-                          background: '#d32f2f',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '50%',
-                          width: '24px',
-                          height: '24px',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
+              <label>Zdjęcia:</label>
+              <div className="photos">
+                <input type="file" multiple accept="image/*" onChange={handleImageSelect} />
+
+                {/* Istniejące zdjęcia */}
+                {existingImages.length > 0 && (
+                  <div className="photo-wrapper">
+                    {existingImages.map((img) => (
+                      <div key={img.id} className="photo-preview">
+                        <img src={img.image} alt="Existing" />
+                        <button type="button" onClick={() => removeExistingImage(img.id)}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Nowe podglądy */}
+                {previewImages.length > 0 && (
+                  <div className="photo-wrapper">
+                    {previewImages.map((img, idx) => (
+                      <div key={idx} className="photo-preview">
+                        <img src={img} alt={`Preview ${idx}`} />
+                        <button type="button" onClick={() => removeImage(idx)}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
+
             <div className="form-group">
               <label htmlFor="price">Cena (zł):</label>
               <input
@@ -257,11 +199,12 @@ export default function EditListing() {
                 id="price"
                 step="0.01"
                 min="0"
-                onChange={(e) => setPrice(e.target.value)}
                 value={price}
+                onChange={(e) => setPrice(e.target.value)}
                 required
               />
             </div>
+
             <div className="form-group">
               <label htmlFor="description">Opis:</label>
               <textarea
@@ -271,9 +214,10 @@ export default function EditListing() {
                 placeholder="Opisz waszą ofertę"
               />
             </div>
+
             <div className="form-group">
               <label htmlFor="location">Lokalizacja (Miasto):</label>
-              <div style={{ position: 'relative' }}>
+              <div className="location-dropdown">
                 <input
                   type="text"
                   id="location"
@@ -285,35 +229,15 @@ export default function EditListing() {
                   onFocus={() => setShowLocationDropdown(true)}
                   placeholder="Zacznij wpisywać nazwę miasta"
                 />
+                <span className="location-arrow">▼</span>
                 {showLocationDropdown && filteredLocations.length > 0 && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    backgroundColor: '#ffffff',
-                    border: '1px solid #ddd',
-                    borderTop: 'none',
-                    maxHeight: '200px',
-                    overflowY: 'auto',
-                    zIndex: 10
-                  }}>
+                  <div className="dropdown-menu-location">
                     {filteredLocations.map((loc) => (
                       <button
                         type="button"
                         key={loc.id}
+                        className="dropdown-link-btn"
                         onClick={() => handleLocationSelect(loc.id, loc.city)}
-                        style={{
-                          width: '100%',
-                          padding: '10px',
-                          border: 'none',
-                          background: 'none',
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.target.style.backgroundColor = '#f5f5f5'}
-                        onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
                       >
                         {loc.city}
                       </button>
@@ -322,41 +246,31 @@ export default function EditListing() {
                 )}
               </div>
             </div>
+
             <div className="form-group">
               <label htmlFor="street">Ulica:</label>
-              <input
-                type="text"
-                id="street"
-                value={street}
-                onChange={(e) => setStreet(e.target.value)}
-              />
+              <input type="text" id="street" value={street} onChange={(e) => setStreet(e.target.value)} />
             </div>
+
             <div className="form-group">
               <label htmlFor="buildingNumber">Numer budynku:</label>
-              <input
-                type="text"
-                id="buildingNumber"
-                value={buildingNumber}
-                onChange={(e) => setBuildingNumber(e.target.value)}
-              />
+              <input type="text" id="buildingNumber" value={buildingNumber} onChange={(e) => setBuildingNumber(e.target.value)} />
             </div>
+
             <div className="form-group">
               <label htmlFor="apartmentNumber">Numer lokalu:</label>
-              <input
-                type="text"
-                id="apartmentNumber"
-                value={apartmentNumber}
-                onChange={(e) => setApartmentNumber(e.target.value)}
-              />
+              <input type="text" id="apartmentNumber" value={apartmentNumber} onChange={(e) => setApartmentNumber(e.target.value)} />
             </div>
-            <div className="form-group" style={{ marginLeft: 0, paddingLeft: 0 }}>
-              <label style={{ margin: 0, marginBottom: '8px', display: 'block' }}>Metody dostawy:</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0px', marginLeft: 0, paddingLeft: 0 }}>
+
+            <div className="form-group delivery-group">
+              <label className="delivery-label">Metody dostawy:</label>
+              <div className="delivery-list">
                 {deliveryMethods.length > 0 ? (
                   deliveryMethods.map((method) => (
-                    <label key={method.id} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', margin: 0, marginLeft: '0px', fontSize: '14px', padding: '2px 0', lineHeight: '1' }}>
+                    <label key={method.id} className="delivery-item">
                       <input
                         type="checkbox"
+                        className="delivery-checkbox"
                         checked={selectedDeliveryMethods.includes(method.id)}
                         onChange={(e) => {
                           if (e.target.checked) {
@@ -365,57 +279,35 @@ export default function EditListing() {
                             setSelectedDeliveryMethods(selectedDeliveryMethods.filter(id => id !== method.id))
                           }
                         }}
-                        style={{ margin: 0, padding: 0 , width: '16px', height: '16px' }}
                       />
                       {method.name}
                     </label>
                   ))
                 ) : (
-                  <p style={{ color: '#999', margin: 0, fontSize: '14px' }}>Brak dostępnych metod dostawy</p>
+                  <p className="delivery-empty">Brak dostępnych metod dostawy</p>
                 )}
               </div>
             </div>
+
             <button type="submit" className="add-btn">Zapisz zmiany</button>
-            
-            {/* Status Change Buttons */}
-            <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid #ddd9cc' }}>
-              <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>Zmień status ogłoszenia:</p>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <button 
+
+            {/* Sekcja zmiany statusu */}
+            <div className="status-section">
+              <p className="status-title">Zmień status ogłoszenia:</p>
+              <div className="status-actions">
+                <button
                   type="button"
+                  className="status-btn status-btn-success"
                   onClick={() => handleChangeStatus('Zakończone')}
                   disabled={statusChanging}
-                  style={{
-                    flex: 1,
-                    padding: '10px 16px',
-                    backgroundColor: '#4CAF50',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: statusChanging ? 'not-allowed' : 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    opacity: statusChanging ? 0.6 : 1,
-                  }}
                 >
                   {statusChanging ? 'Zmiana...' : '✓ Oznacz jako zakończone'}
                 </button>
-                <button 
+                <button
                   type="button"
+                  className="status-btn status-btn-danger"
                   onClick={() => handleChangeStatus('Usunięte')}
                   disabled={statusChanging}
-                  style={{
-                    flex: 1,
-                    padding: '10px 16px',
-                    backgroundColor: '#d32f2f',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: statusChanging ? 'not-allowed' : 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    opacity: statusChanging ? 0.6 : 1,
-                  }}
                 >
                   {statusChanging ? 'Usuwanie...' : '🗑 Usuń ogłoszenie'}
                 </button>

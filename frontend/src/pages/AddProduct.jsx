@@ -107,9 +107,9 @@ export default function AddProduct() {
     <div className="login-container">
       <div className="login-card">
         <div className="login-form-wrapper-reg">
-          
+
           <h1>Dodaj ogłoszenie</h1>
-          {error && <div style={{color: '#d32f2f', marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#ffebee', borderRadius: '4px', fontSize: '0.9rem'}}>{error}</div>}
+          {error && <div className="error-message">{error}</div>}
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label htmlFor="title">Tytuł ogłoszenia:</label>
@@ -120,14 +120,13 @@ export default function AddProduct() {
                 onChange={(e) => setTitle(e.target.value)}
                 required
                 placeholder="np. ścianka działowa"
-                style ={{ backgroundColor: '#fff', color: '#333' }}
               />
             </div>
+
             <div className="form-group">
               <label htmlFor="category">Kategoria:</label>
               <select
                 id="category"
-                style ={{ backgroundColor: '#fff', color: '#333' }}
                 className="select-category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
@@ -139,40 +138,26 @@ export default function AddProduct() {
                 ))}
               </select>
             </div>
+
             <div className="form-group">
               Zdjęcia:
-              <div className='photos'>
+              <div className="photos">
                 <input
                   type="file"
                   multiple
                   accept="image/*"
                   onChange={handleImageSelect}
-                  style={{ marginBottom: '1rem' }}
                 />
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div className="photo-wrapper">
                   {previewImages.map((img, idx) => (
-                    <div key={idx} style={{ position: 'relative', display: 'inline-block' }}>
+                    <div key={idx} className="photo-preview">
                       <img
                         src={img}
                         alt={`Preview ${idx}`}
-                        style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '4px' }}
                       />
                       <button
                         type="button"
                         onClick={() => removeImage(idx)}
-                        style={{
-                          position: 'absolute',
-                          top: '-8px',
-                          right: '-8px',
-                          background: '#d32f2f',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '50%',
-                          width: '24px',
-                          height: '24px',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                        }}
                       >
                         ×
                       </button>
@@ -181,12 +166,12 @@ export default function AddProduct() {
                 </div>
               </div>
             </div>
+
             <div className="form-group">
               <label htmlFor="price">Cena:</label>
               <input
                 type="number"
                 step="0.01"
-                style ={{ backgroundColor: '#fff', color: '#333' }}
                 id="price"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
@@ -194,11 +179,11 @@ export default function AddProduct() {
                 placeholder="w złotówkach"
               />
             </div>
+
             <div className="form-group">
               <label htmlFor="description">Opis produktu:</label>
               <textarea
                 id="description"
-                style ={{ backgroundColor: '#fff', color: '#333' }}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 required
@@ -207,9 +192,10 @@ export default function AddProduct() {
                 cols="70"
               ></textarea>
             </div>
+
             <div className="form-group">
               <label htmlFor="location">Lokalizacja (Miasto):</label>
-              <div style={{ position: 'relative', display: 'inline-block', width: '50%' }}>
+              <div className="location-dropdown">
                 <input
                   type="text"
                   id="location"
@@ -221,11 +207,10 @@ export default function AddProduct() {
                   }}
                   onFocus={() => setShowLocationDropdown(true)}
                   placeholder="Wpisz miasto..."
-                  style={{ paddingRight: '30px', width: '100%', boxSizing: 'border-box', backgroundColor: '#fff', color: '#333' }}
                 />
-                <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#333', fontSize: '12px' }}>▼</div>
+                <div className="location-arrow">▼</div>
                 {showLocationDropdown && (
-                  <div className="dropdown-menu" style={{ maxHeight: '250px', overflowY: 'auto', position: 'absolute', top: '100%', left: 0, marginTop: '8px', width: '50%', boxSizing: 'border-box' }}>
+                  <div className="dropdown-menu dropdown-menu-location">
                     {filteredLocations.length > 0 ? (
                       filteredLocations.map((loc) => (
                         <a
@@ -241,7 +226,7 @@ export default function AddProduct() {
                         </a>
                       ))
                     ) : (
-                      <div className="dropdown-link" style={{ pointerEvents: 'none', color: '#999' }}>
+                      <div className="dropdown-link dropdown-no-results">
                         Brak wyników
                       </div>
                     )}
@@ -249,47 +234,49 @@ export default function AddProduct() {
                 )}
               </div>
             </div>
+
             <div className="form-group">
               <label htmlFor="street">Ulica:</label>
               <input
                 type="text"
                 id="street"
-                style ={{ backgroundColor: '#fff', color: '#333' }}
                 value={street}
                 onChange={(e) => setStreet(e.target.value)}
                 placeholder="Nazwa ulicy"
               />
             </div>
+
             <div className="form-group">
               <label htmlFor="buildingNumber">Nr budynku:</label>
               <input
                 type="text"
                 id="buildingNumber"
-                style ={{ backgroundColor: '#fff', color: '#333' }}
                 value={buildingNumber}
                 onChange={(e) => setBuildingNumber(e.target.value)}
                 placeholder="Nr budynku"
               />
             </div>
+
             <div className="form-group">
               <label htmlFor="apartmentNumber">Nr mieszkania:</label>
               <input
                 type="text"
                 id="apartmentNumber"
-                style ={{ backgroundColor: '#fff', color: '#333' }}
                 value={apartmentNumber}
                 onChange={(e) => setApartmentNumber(e.target.value)}
                 placeholder="Nr mieszkania"
               />
             </div>
-            <div className="form-group" style={{ marginLeft: 0, paddingLeft: 0 }}>
-              <label style={{ margin: 0, marginBottom: '8px', display: 'block' }}>Metody dostawy:</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0px', marginLeft: 0, paddingLeft: 0 }}>
+
+            <div className="form-group delivery-group">
+              <label className="delivery-label">Metody dostawy:</label>
+              <div className="delivery-list">
                 {deliveryMethods.length > 0 ? (
                   deliveryMethods.map((method) => (
-                    <label key={method.id} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', margin: 0, marginLeft: '0px', fontSize: '14px', padding: '2px 0', lineHeight: '1' }}>
+                    <label key={method.id} className="delivery-item">
                       <input
                         type="checkbox"
+                        className="delivery-checkbox"
                         checked={selectedDeliveryMethods.includes(method.id)}
                         onChange={(e) => {
                           if (e.target.checked) {
@@ -298,16 +285,16 @@ export default function AddProduct() {
                             setSelectedDeliveryMethods(selectedDeliveryMethods.filter(id => id !== method.id))
                           }
                         }}
-                        style={{ margin: 0, padding: 0,  width: '16px', height: '16px', backgroundColor: '#fff', color: '#333' }}
                       />
                       {method.name}
                     </label>
                   ))
                 ) : (
-                  <p style={{ color: '#999', margin: 0, fontSize: '14px' }}>Brak dostępnych metod dostawy</p>
+                  <p className="delivery-empty">Brak dostępnych metod dostawy</p>
                 )}
               </div>
             </div>
+
             <button type="submit" className="add-btn">Dodaj ogłoszenie</button>
           </form>
         </div>

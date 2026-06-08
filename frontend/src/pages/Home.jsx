@@ -173,7 +173,9 @@ export default function Home() {
             <div id="filters-section">
               <div className="category-dropdown" ref={categoryDropdownRef}>
                 <button onClick={() => setDropdownOpen(!dropdownOpen)} className="dropdown-btn">
-                  Kategorie ▼
+                  {selectedCategory
+                    ? categories.find(cat => cat.id === selectedCategory)?.name
+                    : 'Kategorie'} ▼
                 </button>
                 {dropdownOpen && (
                   <div className="dropdown-menu">

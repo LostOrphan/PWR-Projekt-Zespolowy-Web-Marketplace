@@ -13,6 +13,7 @@ export default function ProductDetail() {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
   const [listing, setListing] = useState(null)
   const [categories, setCategories] = useState([])
+  const [description, setDescription] = useState([])
   const [loading, setLoading] = useState(true)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [phoneNumber, setPhoneNumber] = useState(null)
@@ -27,6 +28,7 @@ export default function ProductDetail() {
       const listingResult = await getListingById(id)
       if (listingResult.success) {
         setListing(listingResult.data)
+        
       }
 
       const categoriesResult = await getCategories()
@@ -34,6 +36,7 @@ export default function ProductDetail() {
         setCategories(categoriesResult.data)
       }
       setLoading(false)
+      setDescription(listing.description)
     }
     fetchData()
     setCurrentImageIndex(0)
@@ -98,14 +101,16 @@ export default function ProductDetail() {
       <div className="content-wrapper">
         <main className="main-content">
           
-          
+          <div id="main-wrapper">
           {loading ? (
             <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1}}>
               <p>Ładowanie...</p>
             </div>
           ) : listing ? (
+            
             <div className="product-detail-wrapper">
               {/* Left: Image Gallery */}
+              
               <div className="product-gallery">
                 <div className="product-image-container">
                   {listing.images && listing.images.length > 0 ? (
@@ -135,7 +140,7 @@ export default function ProductDetail() {
                   )}
                 </div>
                 {listing.images && listing.images.length > 1 && (
-                  <div className="image-thumbnails">
+                  <div className="image-wrapper"><div className="image-thumbnails">
                     {listing.images.map((img, idx) => (
                       <button
                         key={idx}
@@ -146,7 +151,10 @@ export default function ProductDetail() {
                       </button>
                     ))}
                   </div>
+                  </div>
                 )}
+              
+
               </div>
 
               {/* Right: Product Info */}
@@ -173,12 +181,6 @@ export default function ProductDetail() {
                       <p>{listing.category.name}</p>
                     </div>
                   )}
-                </div>
-
-                {/* Description */}
-                <div className="description-section">
-                  <h2>Opis</h2>
-                  <p>{listing.description || 'Brak opisu'}</p>
                 </div>
 
                 {/* Seller Info */}
@@ -228,12 +230,21 @@ export default function ProductDetail() {
                   )}
                 </div>
               </div>
+              
             </div>
+            
+            
           ) : (
             <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1}}>
               <p>Ogłoszenie nie znalezione</p>
             </div>
+            
           )}
+                  <div className="description-section">
+                  <h2>Opis</h2>
+                  <p>{description || 'Brak opisu'}</p>
+                </div>
+                </div>
         </main>
 
         {/* Footer */}

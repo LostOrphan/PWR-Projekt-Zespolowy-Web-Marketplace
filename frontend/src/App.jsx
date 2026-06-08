@@ -4,7 +4,6 @@ import Login from './pages/Login'
 import ProductDetail from './pages/ProductDetail'
 import Register from './pages/Register'
 import AddProduct from './pages/AddProduct'
-import Search from './pages/Search'
 import MyListings from './pages/MyListings'
 import EditListing from './pages/EditListing'
 import Checkout from './pages/Checkout'
@@ -16,7 +15,6 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/search" element={<Search />} />
         <Route path="/login" element={<Login />} />
         <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/product/:id/edit" element={<EditListing />} />

@@ -22,7 +22,7 @@ export default function Header(){
           <div className='header-logo-item left-side'>
           <h1 onClick={() => navigate('/')}>🛒 BestMarket</h1>
           </div>
-          <div className='header-item'></div>
+          <div className='header-item center-side'></div>
 
           <div className='header-item right-side'>
             <div><button onClick={() => navigate('/addproduct')} className="search-button" style={{width: '150px'}}>Dodaj ogłoszenie</button></div>

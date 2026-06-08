@@ -30,8 +30,7 @@ const navigate = useNavigate()
                       />
                     )}
                     <p className="product-name">{title}</p>
-                    <p className="product-name">{city}</p>
-                    <p className="product-name">{date}</p>
+                    <p className="product-city-date">{city}, {date}</p>
                     <p className="product-price">{price} zł</p>
                   </div>
   );

@@ -255,12 +255,12 @@ class ListingListSerializer(serializers.ModelSerializer):
     """
     category = CategorySerializer(read_only=True)
     location = LocationSerializer(read_only=True)
+    status = ListingStatusSerializer(read_only=True)
     images = serializers.SerializerMethodField()
     first_image = serializers.SerializerMethodField()
-
     class Meta:
         model = Listing
-        fields = ('id', 'title', 'price', 'category', 'location', 'created_at', 'images', 'first_image')
+        fields = ('id', 'title', 'price', 'status', 'category', 'location', 'created_at', 'images', 'first_image')
 
     def _serialize_primary_image(self, obj):
         image = obj.images.filter(is_primary=True).first()

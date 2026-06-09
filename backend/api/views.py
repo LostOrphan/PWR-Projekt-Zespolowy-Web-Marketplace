@@ -11,6 +11,7 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from .permissions import IsListingOwnerOrReadOnly, IsOwnerOrReadOnly
 from api.models import ListingStatus
 from rest_framework import filters  
+import django_filters
 from django_filters.rest_framework import DjangoFilterBackend 
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -106,10 +107,36 @@ class LocationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = LocationSerializer
     permission_classes = (permissions.AllowAny,)
 
+@extend_schema_view(
+    list=extend_schema(
+        summary="Pobierz listę metod dostawy",
+        description="Zwraca listę wszystkich metod dostawy dostępnych dla ogłoszeń.",
+        responses={
+            200: DeliveryMethodSerializer(many=True)
+        }
+    ),
+    retrieve=extend_schema(
+        summary="Pobierz szczegóły metody dostawy",
+        description="Zwraca dane konkretnej metody dostawy na podstawie jej ID.",
+        responses={
+            200: DeliveryMethodSerializer,
+            404: OpenApiResponse(description="Metoda dostawy o podanym ID nie istnieje.")
+        }
+    )
+)
 class DeliveryMethodViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = DeliveryMethod.objects.all()
     serializer_class = DeliveryMethodSerializer
     permission_classes = (permissions.AllowAny,)
+
+class ListingFilter(django_filters.FilterSet):
+    min_price = django_filters.NumberFilter(field_name='price', lookup_expr='gte')
+    max_price = django_filters.NumberFilter(field_name='price', lookup_expr='lte')
+
+    class Meta:
+        model = Listing
+        fields = ['category', 'location', 'status', 'min_price', 'max_price']
+
 
 # ==========================================
 # 3. OGŁOSZENIA (Listingi)
@@ -117,7 +144,7 @@ class DeliveryMethodViewSet(viewsets.ReadOnlyModelViewSet):
 @extend_schema_view(
     list=extend_schema(
         summary="Przeglądaj ogłoszenia",
-        description="Zwraca listę aktywnych ogłoszeń (ukrywa te ze statusem 'Usunięte'). Obsługuje filtrowanie po polach: `category`, `location`, `status` (np. `?category=1`) oraz wyszukiwanie tekstowe (`?search=słowo`).",
+        description="Zwraca listę aktywnych ogłoszeń (ukrywa te ze statusem 'Usunięte'). Obsługuje filtrowanie po polach: `category`, `location`, `status`, `min_price`, `max_price` (np. `?category=1&min_price=100`) oraz wyszukiwanie tekstowe (`?search=słowo`).",
         responses={
             200: ListingSerializer(many=True)
         }
@@ -179,7 +206,7 @@ class ListingViewSet(viewsets.ModelViewSet):
     pagination_class = PageNumberPagination
     
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ['category', 'location', 'status']
+    filterset_class = ListingFilter
     search_fields = ['title', 'description']
     def get_serializer_class(self):
         """

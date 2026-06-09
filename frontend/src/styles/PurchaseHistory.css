@@ -1,0 +1,119 @@
+.page-title {
+  margin-bottom: 2rem;
+  font-size: 1.8rem;
+  color: #333;
+}
+
+.orders-list {
+  max-width: 850px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.order-card {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #ddd9cc;
+  border-radius: 12px;
+  padding: 1.2rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.order-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.05);
+}
+
+.order-image-wrapper {
+  width: 85px;
+  height: 85px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #f9f9f9;
+  margin-right: 1.5rem;
+  flex-shrink: 0;
+  border: 1px solid #eee;
+}
+
+.order-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.order-info {
+  flex-grow: 1;
+}
+
+.order-title {
+  margin: 0 0 0.4rem 0;
+  font-size: 1.2rem;
+  color: #222;
+  cursor: pointer;
+}
+
+.order-title:hover {
+  color: #007bff;
+}
+
+.order-date, .order-delivery {
+  margin: 0.2rem 0;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.order-date span, .order-delivery span {
+  font-weight: 500;
+  color: #333;
+}
+
+.order-badge-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.8rem;
+  margin-left: 1.5rem;
+}
+
+.order-price {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #222;
+}
+
+.status-badge {
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  min-width: 90px;
+}
+
+.status-new { background-color: #FFF3CD; color: #856404; }
+.status-paid { background-color: #CCE5FF; color: #004085; }
+.status-shipped { background-color: #D1ECF1; color: #0C5460; }
+.status-completed { background-color: #D4EDDA; color: #155724; }
+.status-cancelled { background-color: #F8D7DA; color: #721C24; }
+
+.empty-orders {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #666;
+}
+
+.browse-btn {
+  background: none;
+  border: none;
+  color: #007bff;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 0;
+  margin-top: 0.5rem;
+}

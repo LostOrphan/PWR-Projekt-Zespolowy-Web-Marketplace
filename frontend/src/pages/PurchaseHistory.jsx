@@ -1,30 +1,20 @@
-import '../styles/Home.css'
+import '../styles/PurchaseHistory.css'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCookies } from 'react-cookie'
-import { logoutUser } from '../api/auth'
-import { getCategories, getUserOrders } from '../api/listings'
-import userAvatar from '../assets/user.png'
+import { getCategories, getUserOrders, getListingById, getDeliveryMethods } from '../api/listings'
 import Header from '../pages/components/Header.jsx'
 import Footer from '../pages/components/Footer.jsx'
 
 export default function PurchaseHistory() {
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false)
-  const [categories, setCategories] = useState([])
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
-  const [cookies, , removeCookie] = useCookies(['username', 'token'])
+  const [cookies] = useCookies(['token'])
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
-
-      const categoriesResult = await getCategories()
-      if (categoriesResult.success) {
-        setCategories(categoriesResult.data)
-      }
 
       if (!cookies.token) {
         navigate('/login')
@@ -33,7 +23,35 @@ export default function PurchaseHistory() {
 
       const ordersResult = await getUserOrders(cookies.token)
       if (ordersResult.success) {
-        setOrders(ordersResult.data)
+        const rawOrders = ordersResult.data
+
+        // Pobierz słownik metod dostawy 
+        const delResult = await getDeliveryMethods()
+        const deliveryMap = delResult.success 
+          ? Object.fromEntries(delResult.data.map(d => [d.id, d.name]))
+          : {}
+
+        // 2. Pobierz szczegóły ogłoszeń
+        const enrichedOrders = await Promise.all(
+          rawOrders.map(async (order) => {
+            const listingResult = await getListingById(order.listing)
+            if (listingResult.success) {
+              const listing = listingResult.data
+              // Zdjęcie podglądu
+              const primaryImg = listing.images?.find(img => img.is_primary) || listing.images?.[0]
+
+              return {
+                ...order,
+                listing_title: listing.title,
+                listing_image: primaryImg ? primaryImg.image : null,
+                delivery_method_name: deliveryMap[order.delivery_method] || `Metoda #${order.delivery_method}`
+              }
+            }
+            return order
+          })
+        )
+
+        setOrders(enrichedOrders)
       }
 
       setLoading(false)
@@ -41,156 +59,73 @@ export default function PurchaseHistory() {
     fetchData()
   }, [cookies.token, navigate])
 
-  const handleLogout = () => {
-    logoutUser(removeCookie)
-    navigate('/login')
-  }
-
   if (loading) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>Wczytywanie...</div>
+    return <div className="loading-state">Wczytywanie...</div>
   }
 
   return (
     <div className="app-container">
-      {/* Header */}
-      <Header/>
-
-      {/* Main content */}
+      <Header />
       <div className="content-wrapper">
         <main className="main-content">
-        
-
-          <h1 style={{ marginBottom: '2rem' }}>Historia zakupów</h1>
+          <h1 className="page-title">Historia zakupów</h1>
 
           {orders.length > 0 ? (
-            <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-              <table
-                style={{
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                  backgroundColor: '#ffffff',
-                  borderRadius: '8px',
-                  overflow: 'hidden',
-                  border: '1px solid #ddd9cc',
-                }}
-              >
-                <thead>
-                  <tr style={{ backgroundColor: '#e8e4d1', borderBottom: '2px solid #ddd9cc' }}>
-                    <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#333' }}>
-                      Produkt
-                    </th>
-                    <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#333' }}>
-                      Cena
-                    </th>
-                    <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#333' }}>
-                      Metoda dostawy
-                    </th>
-                    <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#333' }}>
-                      Status
-                    </th>
-                    <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '600', color: '#333' }}>
-                      Data
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.map((order) => (
-                    <tr
-                      key={order.id}
-                      style={{
-                        borderBottom: '1px solid #ddd9cc',
-                        transition: 'background-color 0.2s',
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f5f1e8')}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+            <div className="orders-list">
+              {orders.map((order) => (
+                <div key={order.id} className="order-card">
+                  <div 
+                    className="order-image-wrapper" 
+                    onClick={() => navigate(`/product/${order.listing}`)}
+                  >
+                    <img
+                      src={order.listing_image || '/placeholder-product.png'}
+                      alt={order.listing_title || 'Produkt'}
+                      className="order-image"
+                    />
+                  </div>
+
+                  <div className="order-info">
+                    <h3 
+                      className="order-title" 
+                      onClick={() => navigate(`/product/${order.listing}`)}
                     >
-                      <td
-                        style={{
-                          padding: '1rem',
-                          cursor: 'pointer',
-                          color: '#007bff',
-                          textDecoration: 'underline',
-                        }}
-                        onClick={() => navigate(`/product/${order.listing}`)}
-                      >
-                        {order.listing_title || `Ogłoszenie #${order.listing}`}
-                      </td>
-                      <td style={{ padding: '1rem', color: '#333' }}>
-                        {parseFloat(order.purchase_price).toFixed(2)} PLN
-                      </td>
-                      <td style={{ padding: '1rem', color: '#333' }}>
-                        {order.delivery_method_name || `Metoda #${order.delivery_method}`}
-                      </td>
-                      <td style={{ padding: '1rem' }}>
-                        <span
-                          style={{
-                            padding: '0.4rem 0.8rem',
-                            borderRadius: '4px',
-                            fontSize: '0.9rem',
-                            fontWeight: '600',
-                            backgroundColor:
-                              order.status === 'NEW'
-                                ? '#FFF3CD'
-                                : order.status === 'PAID'
-                                  ? '#CCE5FF'
-                                  : order.status === 'SHIPPED'
-                                    ? '#D1ECF1'
-                                    : order.status === 'COMPLETED'
-                                      ? '#D4EDDA'
-                                      : '#F8D7DA',
-                            color:
-                              order.status === 'NEW'
-                                ? '#856404'
-                                : order.status === 'PAID'
-                                  ? '#004085'
-                                  : order.status === 'SHIPPED'
-                                    ? '#0C5460'
-                                    : order.status === 'COMPLETED'
-                                      ? '#155724'
-                                      : '#721C24',
-                          }}
-                        >
-                          {order.status === 'NEW'
-                            ? 'Nowe'
-                            : order.status === 'PAID'
-                              ? 'Opłacone'
-                              : order.status === 'SHIPPED'
-                                ? 'Wysłane'
-                                : order.status === 'COMPLETED'
-                                  ? 'Zakończone'
-                                  : 'Anulowane'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '1rem', color: '#666', fontSize: '0.9rem' }}>
-                        {new Date(order.created_at).toLocaleDateString('pl-PL')}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      {order.listing_title || `Ogłoszenie #${order.listing}`}
+                    </h3>
+                    <p className="order-date">
+                      Zakupiono: <span>{new Date(order.created_at).toLocaleDateString('pl-PL')}</span>
+                    </p>
+                    <p className="order-delivery">
+                      Dostawa: <span>{order.delivery_method_name}</span>
+                    </p>
+                  </div>
+
+                  <div className="order-badge-price">
+                    <span className={`status-badge status-${order.status.toLowerCase()}`}>
+                      {order.status === 'NEW' && 'Nowe'}
+                      {order.status === 'PAID' && 'Opłacone'}
+                      {order.status === 'SHIPPED' && 'Wysłane'}
+                      {order.status === 'COMPLETED' && 'Zakończone'}
+                      {order.status === 'CANCELLED' && 'Anulowane'}
+                    </span>
+                    <div className="order-price">
+                      {parseFloat(order.purchase_price).toFixed(2)} PLN
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
-            <p style={{ textAlign: 'center', fontSize: '1.1rem', color: '#666' }}>
-              Nie masz żadnych zamówień. Zacznij od{' '}
-              <button
-                onClick={() => navigate('/')}
-                style={{
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  color: '#007bff',
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                }}
-              >
-                przeglądania ofert
+            <div className="empty-orders">
+              <p>Nie masz jeszcze żadnych zamówień.</p>
+              <button onClick={() => navigate('/')} className="browse-btn">
+                Zacznij przeglądać oferty
               </button>
-            </p>
+            </div>
           )}
         </main>
-
-        {/* Footer */}
-        <Footer/>
       </div>
+      <Footer />
     </div>
   )
 }

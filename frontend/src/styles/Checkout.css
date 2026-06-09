@@ -1,0 +1,223 @@
+.checkout-loading {
+  padding: 4rem 2rem;
+  text-align: center;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.checkout-card {
+  max-width: 750px;
+  margin: 2rem auto;
+  background: #ffffff;
+  border: 1px solid #ddd9cc;
+  border-radius: 12px;
+  padding: 2.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.checkout-card h1 {
+  font-size: 1.8rem;
+  margin-bottom: 2rem;
+  color: #333;
+  border-bottom: 2px solid #f5f1e8;
+  padding-bottom: 0.75rem;
+}
+
+.checkout-error {
+  color: #c62828;
+  margin-bottom: 1.5rem;
+  padding: 0.85rem 1rem;
+  background-color: #ffebee;
+  border-left: 4px solid #c62828;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.order-summary-box {
+  margin-bottom: 2.5rem;
+  padding: 1.5rem;
+  background-color: #f9f8f5;
+  border-radius: 8px;
+  border: 1px solid #ddd9cc;
+}
+
+.order-summary-box h2 {
+  font-size: 1.15rem;
+  margin: 0 0 1rem 0;
+  color: #333;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+  font-size: 1rem;
+  color: #333;
+}
+
+.summary-price {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #d97706; /* Kolor ceny z home page */
+}
+
+.section-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+  color: #333;
+}
+
+.radio-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+}
+
+.radio-item {
+  display: flex !important;
+  flex-direction: row !important; 
+  align-items: center;           
+  gap: 12px;                    
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #ddd9cc;
+  background-color: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.radio-item:hover:not(.disabled) {
+  background-color: #f9f8f5;
+}
+
+.radio-item.active {
+  border-color: rgb(35, 226, 92); /* Zielony akcent */
+  background-color: #fcfbfa;
+}
+
+.radio-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #ebe7d9;
+}
+
+.radio-item input[type="radio"] {
+  flex-shrink: 0;                
+  margin: 0;                     
+  width: 18px;
+  height: 18px;
+  accent-color: rgb(35, 226, 92);
+  cursor: inherit;
+}
+
+.radio-text {
+  font-size: 0.95rem;
+  color: #333;
+  line-height: 1.4;
+}
+
+.method-desc {
+  color: #868686;
+  font-weight: 400;
+}
+
+.method-na {
+  color: #c62828;
+  font-style: italic;
+}
+
+.checkout-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd9cc;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  box-sizing: border-box;
+  resize: vertical;
+  background-color: #fff;
+  color: #333;
+}
+
+.checkout-textarea:focus {
+  outline: none;
+  border-color: #c9c2b8;
+  box-shadow: 0 0 0 3px rgba(221, 217, 204, 0.4);
+}
+
+.demo-info-box {
+  margin-top: 2rem;
+  padding: 1rem;
+  background-color: #f9f8f5;
+  border-left: 4px solid #d97706;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #333;
+  line-height: 1.4;
+}
+
+.checkout-submit-btn {
+  width: 100%;
+  margin-top: 2rem;
+  background-color: rgb(35, 226, 92); /* Zielony z home page */
+  color: white;
+  border: none;
+  padding: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.checkout-submit-btn:hover:not(:disabled) {
+  background-color: rgb(25, 172, 69);
+}
+
+.checkout-submit-btn:disabled {
+  background-color: #ddd9cc;
+  color: #868686;
+  cursor: not-allowed;
+}
+
+.summary-content {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.summary-image {
+  width: 110px;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #ddd9cc;
+  background-color: #ebe7d9;
+}
+
+.summary-image-placeholder {
+  width: 110px;
+  height: 110px;
+  border-radius: 6px;
+  border: 1px solid #ddd9cc;
+  background-color: #ebe7d9;
+}
+
+.summary-details {
+  flex: 1;
+  min-width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.price-row {
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed #ddd9cc;
+}

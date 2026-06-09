@@ -37,8 +37,12 @@ export default function EditListing() {
       const locResult = await getLocations()
       if (locResult.success) setLocations(locResult.data)
 
+      let fetchedDelivery = []
       const delResult = await getDeliveryMethods()
-      if (delResult.success) setDeliveryMethods(delResult.data)
+      if (delResult.success) {
+        setDeliveryMethods(delResult.data)
+        fetchedDelivery = delResult.data
+      }
 
       const listingResult = await getListingById(id)
       if (listingResult.success) {
@@ -53,7 +57,13 @@ export default function EditListing() {
         setLocation(listing.location?.id || '')
         setLocationSearch(listing.location?.city || '')
         setExistingImages(listing.images || [])
-        setSelectedDeliveryMethods(listing.delivery_methods || [])
+        
+        // Jeśli ogłoszenie ma metody dostawy, załaduj je. Jeśli nie, wybierz pierwszą z listy (odbiór osobisty) jako domyślną.
+        if (listing.delivery_methods && listing.delivery_methods.length > 0) {
+          setSelectedDeliveryMethods(listing.delivery_methods)
+        } else if (fetchedDelivery.length > 0) {
+          setSelectedDeliveryMethods([fetchedDelivery[0].id])
+        }
       }
       setLoading(false)
     }
@@ -164,7 +174,7 @@ export default function EditListing() {
             <div className="form-group">
               <label>Zdjęcia:</label>
               <div className="photos">
-                <input type="file" multiple accept="image/*" onChange={handleImageSelect} />
+                <input type="file" required multiple accept="image/*" onChange={handleImageSelect} />
 
                 {/* Istniejące zdjęcia */}
                 {existingImages.length > 0 && (
@@ -212,6 +222,7 @@ export default function EditListing() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Opisz waszą ofertę"
+                required
               />
             </div>
 
@@ -221,6 +232,7 @@ export default function EditListing() {
                 <input
                   type="text"
                   id="location"
+                  required
                   value={locationSearch}
                   onChange={(e) => {
                     setLocationSearch(e.target.value)
@@ -271,6 +283,7 @@ export default function EditListing() {
                       <input
                         type="checkbox"
                         className="delivery-checkbox"
+                        required={selectedDeliveryMethods.length === 0}
                         checked={selectedDeliveryMethods.includes(method.id)}
                         onChange={(e) => {
                           if (e.target.checked) {

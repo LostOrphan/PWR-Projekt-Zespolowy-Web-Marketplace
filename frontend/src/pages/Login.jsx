@@ -41,10 +41,9 @@ export default function Login() {
         <div className="login-form-wrapper">
           <h1>Zaloguj się</h1>
           {error && <div className="error-message">{error}</div>}
-          {/* Input field width as inline because it does not want to function otherwise */}
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <input style = {{width: '100%'}}
+              <input
                 type="email"
                 id="email"
                 value={email}
@@ -54,7 +53,7 @@ export default function Login() {
               />
             </div>
             <div className="form-group">
-              <input style = {{width: '100%'}}
+              <input
                 type="password"
                 id="password"
                 value={password}

@@ -40,6 +40,10 @@ export default function AddProduct() {
       const delResult = await getDeliveryMethods()
       if (delResult.success) {
         setDeliveryMethods(delResult.data)
+        // Ustawienie opcji domyślnej motedy dostawy (odbiór osobisty)
+        if (delResult.data.length > 0) {
+          setSelectedDeliveryMethods([delResult.data[0].id])
+        }
       }
     }
     fetchCategoriesAndLocations()
@@ -145,6 +149,7 @@ export default function AddProduct() {
                 <input
                   type="file"
                   multiple
+                  required
                   accept="image/*"
                   onChange={handleImageSelect}
                 />
@@ -200,6 +205,7 @@ export default function AddProduct() {
                   type="text"
                   id="location"
                   className="select-category"
+                  required
                   value={locationSearch}
                   onChange={(e) => {
                     setLocationSearch(e.target.value)
@@ -275,6 +281,7 @@ export default function AddProduct() {
                   deliveryMethods.map((method) => (
                     <label key={method.id} className="delivery-item">
                       <input
+                      required={selectedDeliveryMethods.length === 0}
                         type="checkbox"
                         className="delivery-checkbox"
                         checked={selectedDeliveryMethods.includes(method.id)}

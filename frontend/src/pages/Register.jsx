@@ -52,7 +52,7 @@ export default function Login() {
           {/* Input field width as inline because it does not want to function otherwise */}
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <input style = {{width: '100%'}}
+              <input 
                 type="text"
                 id="name"
                 value={name}
@@ -62,7 +62,7 @@ export default function Login() {
               />
             </div>
             <div className="form-group">
-              <input style = {{width: '100%'}}
+              <input
                 type="text"
                 id="surname"
                 value={surname}
@@ -72,7 +72,7 @@ export default function Login() {
               />
             </div>
             <div className="form-group">
-              <input style = {{width: '100%'}}
+              <input
                 type="email"
                 id="email"
                 value={email}
@@ -82,16 +82,17 @@ export default function Login() {
               />
             </div>
             <div className="form-group">
-              <input style = {{width: '100%'}}
+              <input 
                 type="text"
                 id="phone"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Numer telefonu"
+                required
               />
             </div>
             <div className="form-group">
-              <input style = {{width: '100%'}}
+              <input
                 type="password"
                 id="password"
                 value={password}
@@ -101,7 +102,7 @@ export default function Login() {
               />
             </div>
             <div className="form-group">
-              <input style = {{width: '100%'}}
+              <input
                 type="password"
                 id="password2"
                 value={password2}

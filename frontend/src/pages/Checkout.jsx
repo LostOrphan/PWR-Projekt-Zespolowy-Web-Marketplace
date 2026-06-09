@@ -1,27 +1,22 @@
-import '../styles/AddProduct.css'
-import { useState, useEffect } from 'react'
+import '../styles/Checkout.css'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useCookies } from 'react-cookie'
 import { getListingById, getDeliveryMethods, createOrder } from '../api/listings'
-import { logoutUser } from '../api/auth'
-import userAvatar from '../assets/user.png'
 import Footer from '../pages/components/Footer.jsx'
 import Header from '../pages/components/Header.jsx'
 
 export default function Checkout() {
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false)
   const [listing, setListing] = useState(null)
   const [deliveryMethods, setDeliveryMethods] = useState([])
   const [selectedDeliveryMethod, setSelectedDeliveryMethod] = useState('')
   const [selectedPayment, setSelectedPayment] = useState('card')
   const [deliveryDetails, setDeliveryDetails] = useState('')
-  const [paymentReference, setPaymentReference] = useState('')
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
-  const [cookies, , removeCookie] = useCookies(['username', 'token'])
+  const [cookies] = useCookies(['token'])
   const { id } = useParams()
 
   const paymentMethods = [
@@ -34,36 +29,27 @@ export default function Checkout() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
-
       const listingResult = await getListingById(id)
-      if (listingResult.success) {
-        setListing(listingResult.data)
-      }
+      if (listingResult.success) setListing(listingResult.data)
 
       const deliveryResult = await getDeliveryMethods()
-      if (deliveryResult.success) {
-        setDeliveryMethods(deliveryResult.data)
-      }
-
+      if (deliveryResult.success) setDeliveryMethods(deliveryResult.data)
       setLoading(false)
     }
     fetchData()
   }, [id])
 
-  const handleLogout = () => {
-    logoutUser(removeCookie)
-    navigate('/login')
-  }
+  // Użycie useMemo zapobiega nieskończonej pętli renderowania
+  const availableDeliveryMethods = useMemo(() => {
+    return deliveryMethods.filter(method =>
+      listing?.delivery_methods && listing.delivery_methods.includes(method.id)
+    )
+  }, [deliveryMethods, listing])
 
-  // Filter available delivery methods based on listing's delivery_methods
-  const availableDeliveryMethods = deliveryMethods.filter(method =>
-    listing?.delivery_methods && listing.delivery_methods.includes(method.id)
-  )
-
-  // Set initial selected method from available ones
+  // Ustawienie domyślnej metody dostawy
   useEffect(() => {
     if (availableDeliveryMethods.length > 0 && !selectedDeliveryMethod) {
-      setSelectedDeliveryMethod(availableDeliveryMethods[0].id)
+      setSelectedDeliveryMethod(String(availableDeliveryMethods[0].id))
     }
   }, [availableDeliveryMethods, selectedDeliveryMethod])
 
@@ -78,218 +64,153 @@ export default function Checkout() {
       return
     }
 
-    if (!selectedPayment) {
-      setError('Wybierz metodę płatności')
-      setProcessing(false)
-      return
-    }
-
     try {
       const result = await createOrder(
         {
           listing: listing.id,
-          delivery_method: parseInt(selectedDeliveryMethod),
-          delivery_details: `Payment method: ${selectedPayment}\\n\\nDelivery details:\\n${deliveryDetails}`,
+          delivery_method: parseInt(selectedDeliveryMethod, 10),
+          delivery_details: deliveryDetails
         },
         cookies.token
       )
 
       if (result.success) {
-        navigate(`/product/${id}`)
+        navigate('/purchase-history') // Przekierowanie do historii zakupów zamiast produktu
       } else {
-        setError(result.error)
+        setError(result.error || 'Nie udało się zapisać zamówienia')
       }
     } catch (err) {
-      console.error('Order error:', err)
       setError('Błąd przy złożeniu zamówienia')
     } finally {
       setProcessing(false)
     }
   }
 
-  if (loading) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>Wczytywanie...</div>
-  }
-
-  if (!listing) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>Ogłoszenie nie znalezione</div>
-  }
+  if (loading) return <div className="checkout-loading">Wczytywanie...</div>
+  if (!listing) return <div className="checkout-loading">Ogłoszenie nie znalezione</div>
 
   return (
     <div className="app-container">
-      {/* Header */}
-      <Header/>
-
-      {/* Main content */}
+      <Header />
       <div className="content-wrapper">
         <main className="main-content">
-        
+          <div className="checkout-card">
+            <h1>Potwierdzenie zamówienia</h1>
+            {error && <div className="checkout-error">{error}</div>}
 
-          <div className="login-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <div className="login-form-wrapper-reg">
-              <h1>Potwierdzenie zamówienia</h1>
+            {/* Podsumowanie zamówienia */}
+            <div className="order-summary-box">
+              <h2>Podsumowanie zamówienia</h2>
+              <div className="summary-content">
+                {listing.images && listing.images.length > 0 ? (
+                  <img
+                    src={listing.images[0].image}
+                    alt={listing.title}
+                    className="summary-image"
+                  />
+                ) : (
+                  <div className="summary-image-placeholder" />
+                )}
 
-              {error && (
-                <div
-                  style={{
-                    color: '#d32f2f',
-                    marginBottom: '1rem',
-                    padding: '0.75rem',
-                    backgroundColor: '#ffebee',
-                    borderRadius: '4px',
-                    fontSize: '0.9rem',
-                  }}
-                >
-                  {error}
+                <div className="summary-details">
+                  <div className="summary-row">
+                    <span>Artykuł:</span> <strong>{listing.title}</strong>
+                  </div>
+                  <div className="summary-row">
+                    <span>Sprzedawca:</span> <strong>{listing.seller.first_name} {listing.seller.last_name}</strong>
+                  </div>
+                  <div className="summary-row price-row">
+                    <span>Do zapłaty:</span> <span className="summary-price">{listing.price} PLN</span>
+                  </div>
                 </div>
-              )}
+              </div>
+            </div>
 
-              {/* Order Summary */}
-              <div
-                style={{
-                  marginBottom: '2rem',
-                  padding: '1.5rem',
-                  backgroundColor: '#f5f1e8',
-                  borderRadius: '8px',
-                  border: '1px solid #ddd9cc',
-                }}
-              >
-                <h2 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Podsumowanie zamówienia</h2>
-                <div style={{ marginBottom: '1rem' }}>
-                  <p style={{ marginBottom: '0.5rem' }}>
-                    <strong>Artykuł:</strong> {listing.title}
-                  </p>
-                  <p style={{ marginBottom: '0.5rem' }}>
-                    <strong>Sprzedawca:</strong> {listing.seller.first_name} {listing.seller.last_name}
-                  </p>
-                  <p style={{ marginBottom: '0.5rem', fontSize: '1.1rem', color: '#2196F3' }}>
-                    <strong>Cena:</strong> {listing.price} PLN
-                  </p>
+            <form onSubmit={handlePlaceOrder}>
+              {/* Metody dostawy */}
+              <div className="form-group">
+                <label className="section-label">Metoda dostawy:</label>
+                <div className="radio-list">
+                  {deliveryMethods.map((method) => {
+                    const isAvailable = listing?.delivery_methods?.includes(method.id)
+                    const isChecked = String(selectedDeliveryMethod) === String(method.id)
+                    return (
+                      <label
+                        key={method.id}
+                        className={`radio-item ${isChecked ? 'active' : ''} ${!isAvailable ? 'disabled' : ''}`}
+                      >
+                        <input
+                          type="radio"
+                          name="delivery"
+                          value={method.id}
+                          checked={isChecked}
+                          onChange={(e) => setSelectedDeliveryMethod(e.target.value)}
+                          disabled={!isAvailable}
+                        />
+                        <div className="radio-text">
+                          <strong>{method.name}</strong>
+                          {method.description && <span className="method-desc"> - {method.description}</span>}
+                          {!isAvailable && <span className="method-na"> (niedostępna)</span>}
+                        </div>
+                      </label>
+                    )
+                  })}
                 </div>
               </div>
 
-              <form onSubmit={handlePlaceOrder}>
-                {/* Delivery Method */}
-                <div className="form-group">
-                  <label>Metoda dostawy:</label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {deliveryMethods.map((method) => {
-                      const isAvailable = listing?.delivery_methods && listing.delivery_methods.includes(method.id)
-                      return (
-                        <label
-                          key={method.id}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            cursor: isAvailable ? 'pointer' : 'not-allowed',
-                            padding: '0.75rem',
-                            borderRadius: '4px',
-                            border: selectedDeliveryMethod == method.id ? '2px solid #2196F3' : '1px solid #ddd9cc',
-                            backgroundColor: selectedDeliveryMethod == method.id ? '#E3F2FD' : isAvailable ? 'transparent' : '#f5f5f5',
-                            opacity: isAvailable ? 1 : 0.5,
-                          }}
-                        >
-                          <input
-                            type="radio"
-                            name="delivery"
-                            value={method.id}
-                            checked={selectedDeliveryMethod == method.id}
-                            onChange={(e) => setSelectedDeliveryMethod(e.target.value)}
-                            disabled={!isAvailable}
-                            style={{ marginRight: '0.75rem', cursor: isAvailable ? 'pointer' : 'not-allowed' }}
-                          />
-                          <span style={{ color: isAvailable ? '#333' : '#999' }}>
-                            {method.name}
-                            {method.description && ` - ${method.description}`}
-                            {!isAvailable && ' (niedostępna)'}
-                          </span>
-                        </label>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Payment Method */}
-                <div className="form-group">
-                  <label>Metoda płatności:</label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {paymentMethods.map((method) => (
-                      <label
-                        key={method.value}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          cursor: 'pointer',
-                          padding: '0.75rem',
-                          borderRadius: '4px',
-                          border: selectedPayment === method.value ? '2px solid #2196F3' : '1px solid #ddd9cc',
-                          backgroundColor: selectedPayment === method.value ? '#E3F2FD' : 'transparent',
-                        }}
-                      >
+              {/* Metody płatności */}
+              <div className="form-group">
+                <label className="section-label">Metoda płatności:</label>
+                <div className="radio-list">
+                  {paymentMethods.map((method) => {
+                    const isChecked = selectedPayment === method.value
+                    return (
+                      <label key={method.value} className={`radio-item ${isChecked ? 'active' : ''}`}>
                         <input
                           type="radio"
                           name="payment"
                           value={method.value}
-                          checked={selectedPayment === method.value}
+                          checked={isChecked}
                           onChange={(e) => setSelectedPayment(e.target.value)}
-                          style={{ marginRight: '0.75rem', cursor: 'pointer' }}
                         />
-                        {method.label}
+                        <div className="radio-text">
+                          <strong>{method.label}</strong>
+                        </div>
                       </label>
-                    ))}
-                  </div>
+                    )
+                  })}
                 </div>
+              </div>
 
-                {/* Delivery Details */}
-                <div className="form-group">
-                  <label htmlFor="deliveryDetails">Dane dostawy (adres, paczkomat itp.):</label>
-                  <textarea
-                    id="deliveryDetails"
-                    value={deliveryDetails}
-                    onChange={(e) => setDeliveryDetails(e.target.value)}
-                    placeholder="Np. ul. Marszałkowska 1, 00-001 Warszawa lub numer paczkomatu"
-                    rows="3"
-                    style={{
-                      width: '50%',
-                      padding: '10px 12px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      fontSize: '14px',
-                      fontFamily: 'inherit',
-                      boxSizing: 'border-box',
-                      backgroundColor: '#fff',
-                      color: '#333'
-                    }}
-                  />
-                </div>
+              {/* Szczegóły dostawy */}
+              <div className="form-group">
+                <label htmlFor="deliveryDetails" className="section-label">
+                  Dane dostawy (adres, paczkomat itp.):
+                </label>
+                <textarea
+                  id="deliveryDetails"
+                  value={deliveryDetails}
+                  onChange={(e) => setDeliveryDetails(e.target.value)}
+                  placeholder="Np. ul. Marszałkowska 1, 00-001 Warszawa lub kod paczkomatu"
+                  rows="3"
+                  className="checkout-textarea"
+                  required
+                />
+              </div>
 
+              {/* Komunikat o wersji Demo */}
+              <div className="demo-info-box">
+                <strong>ℹ️ Informacja:</strong> To jest wersja demonstracyjna aplikacji. Płatność nie zostanie faktycznie pobrana z Twojego konta.
+              </div>
 
-                {/* Info */}
-                <div
-                  style={{
-                    marginTop: '2rem',
-                    padding: '1rem',
-                    backgroundColor: '#FFF3E0',
-                    borderRadius: '4px',
-                    fontSize: '0.9rem',
-                    color: '#E65100',
-                  }}
-                >
-                  <strong>ℹ️ Informacja:</strong> Po kliknięciu „Złóż zamówienie", zaraz będzie dostępna płatność metodą
-                  wybraną powyżej. To jest demo aplikacji - płatność nie będzie faktycznie przetwarzana.
-                </div>
-
-                <button type="submit" className="add-btn" disabled={processing} style={{ marginTop: '2rem' }}>
-                  {processing ? 'Przetwarzanie...' : 'Złóż zamówienie'}
-                </button>
-              </form>
-            </div>
+              <button type="submit" className="checkout-submit-btn" disabled={processing}>
+                {processing ? 'Przetwarzanie...' : 'Złóż zamówienie i zapłać'}
+              </button>
+            </form>
           </div>
         </main>
-
-        {/* Footer */}
-        <Footer/>
       </div>
+      <Footer />
     </div>
   )
 }

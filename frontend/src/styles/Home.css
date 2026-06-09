@@ -87,20 +87,42 @@
 
 #filters-section {
   display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
   justify-content: center;
-  font-size: 20px;
+  margin-top: 15px;
+}
+
+.price-filter-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#filters-section .dropdown-btn,
+#filters-section .price-input,
+#filters-section .search-button {
+  height: 42px;
+  box-sizing: border-box;
+  border: 1px solid #ddd9cc;
+  border-radius: 6px;
+  font-size: 14px;
+  padding: 0 16px;
+  background-color: #ffffff;
+  color: #333;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease-in-out;
+}
+
+#filters-section .price-input::placeholder {
+  color: #999;
 }
 
 .dropdown-btn {
-  padding: 10px 10px;
-  background-color: #ffffff;
-  color: #333;
-  border: 1px solid #ddd9cc;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.3s;
 }
 
 .dropdown-btn:hover {
@@ -152,7 +174,6 @@
   border: none;
   background: none;
   cursor: pointer;
-  padding: 0.5rem 1rem;
 }
 
 #searching-container {
@@ -160,6 +181,7 @@
   flex-direction: column;
   align-items: center;
   gap: 10px;
+  width: 100%;
 }
 
 .dropdown-link:last-child {
@@ -234,20 +256,22 @@
   color: #999;
 }
 
-.search-button {
+.search-bar-container .search-button {
   padding: 5px;
   color: white;
-  background-color: rgb(35, 226, 92);
+  background-color: #2ecc71;
   width: 100px;
   border-radius: 10px;
   font-size: 20px;
   transition: 0.3s background-color;
   cursor: pointer;
   margin-left: 10px;
+  height: auto;
+  border: none;
 }
 
-.search-button:hover {
-  background-color: rgb(25, 172, 69);
+.search-bar-container .search-button:hover {
+  background-color: #27ae60;
 }
 
 .category-section {
@@ -306,7 +330,7 @@
 }
 
 .product-card:hover img {
-  filter: brightness(90%)
+  filter: brightness(90%);
 }
 
 .product-image {
@@ -348,13 +372,11 @@
   padding: 20px;
   text-align: center;
   border-top: 2px solid #ddd9cc;
-
   flex: 0 0 auto;
 }
 
 .app-footer p {
   margin: 0;
-
   color: #333;
 }
 
@@ -394,11 +416,11 @@
 }
 
 .no-own-listings {
-  background-color: 'transparent';
-  border: 'none';
-  color: '#007bff';
-  cursor: 'pointer';
-  text-decoration: 'underline';
+  background-color: transparent;
+  border: none;
+  color: #007bff;
+  cursor: pointer;
+  text-decoration: underline;
 }
 
 .location-btn-item {
@@ -408,10 +430,6 @@
   text-align: left;
   cursor: pointer;
   padding: 10px 12px;
-}
-
-.reset-filters-btn {
-  width: 150px;
 }
 
 .no-listings-error {
@@ -428,4 +446,120 @@
 
 .loading-more-text {
   color: #666;
+}
+
+#filters-section .price-input {
+  width: 95px;
+  text-align: center;
+}
+
+#filters-section .price-input::-webkit-outer-spin-button,
+#filters-section .price-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+#filters-section .price-input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+#filters-section .price-submit-btn {
+  background-color: #2ecc71;
+  color: white;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 14px;
+}
+
+#filters-section .price-submit-btn:hover {
+  background-color: #27ae60;
+}
+
+#filters-section .dropdown-btn.btn-completed-active {
+  background-color: #e74c3c;
+  color: white;
+  border-color: #e74c3c;
+}
+
+#filters-section .reset-filters-btn {
+  background-color: #7f8c8d;
+  color: white;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  width: 150px;
+  margin-left: 0;
+}
+
+#filters-section .reset-filters-btn:hover {
+  background-color: #95a5a6;
+}
+
+.product-card.completed-card {
+  opacity: 0.55;
+  background-color: #f7f7f7;
+  filter: grayscale(35%);
+}
+
+.product-card.completed-card .product-price {
+  color: #8c8c8c;
+  text-decoration: line-through;
+}
+
+.header-item .search-button {
+  height: 42px;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  padding: 0 16px;
+  background-color: #2ecc71;
+  color: white;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.header-item .search-button:hover {
+  background-color: #27ae60;
+}
+
+.header-item .dropdown-btn {
+  height: 42px;
+  box-sizing: border-box;
+  border: 1px solid #ddd9cc;
+  border-radius: 6px;
+  font-size: 14px;
+  padding: 0 16px;
+  background-color: #ffffff;
+  color: #333;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.header-item .dropdown-btn:hover {
+  background-color: #f9f8f5;
+}
+
+.toggle-filters-btn {
+  background: none;
+  border: none;
+  color: #7f8c8d;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 15px;
+  padding: 5px 10px;
+  transition: color 0.2s ease-in-out;
+}
+
+.toggle-filters-btn:hover {
+  color: #333;
 }

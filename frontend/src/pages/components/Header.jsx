@@ -25,7 +25,9 @@ export default function Header(){
           <div className='header-item center-side'></div>
 
           <div className='header-item right-side'>
-            <div><button onClick={() => navigate('/addproduct')} className="search-button" style={{width: '150px'}}>Dodaj ogłoszenie</button></div>
+
+            {cookies.username &&(<div><button onClick={() => navigate('/addproduct')} className="search-button" style={{width: '150px'}}>Dodaj ogłoszenie</button></div>)}
+            {!cookies.username &&(<div><button onClick={() => navigate('/login')} className="search-button" style={{width: '150px'}}>Dodaj ogłoszenie</button></div>)}
             <div>
           {/*TODO FUNCTIONALITY FOR USER DISPLAY*/}
           {/*ADDITIONAL: SITES/BUTTONS FOR FOLLOWED OFFERS/FOR SALE, SOLD ITEMS, BOUGHT ITEMS*/}

@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
 import { registerUser } from '../api/auth'
+import Header from '../pages/components/Header.jsx'
+import Footer from '../pages/components/Footer.jsx'
 
 export default function Login() {
   const [name, setName] = useState('')
@@ -45,6 +47,7 @@ export default function Login() {
 
   return (
     <div className="login-container">
+      <Header />
       <div className="login-card">
         <div className="login-form-wrapper">
           <h1>Zarejestruj się</h1>
@@ -118,6 +121,7 @@ export default function Login() {
           </form>
         </div>
       </div>
+      <Footer />
     </div>
   )
 }

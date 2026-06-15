@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react'
 import { useCookies } from 'react-cookie'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getListingById, updateListing, getCategories, getLocations, getDeliveryMethods, changeListingStatus } from '../api/listings'
+import Header from '../pages/components/Header.jsx'
+import Footer from '../pages/components/Footer.jsx'
 
 export default function EditListing() {
   const [title, setTitle] = useState('')
@@ -137,6 +139,7 @@ export default function EditListing() {
 
   return (
     <div className="login-container">
+      <Header />
       <div className="login-card">
         <div className="login-form-wrapper-reg">
           <h1>Edytuj ogłoszenie</h1>
@@ -329,6 +332,7 @@ export default function EditListing() {
           </form>
         </div>
       </div>
+      <Footer />
     </div>
   )
 }

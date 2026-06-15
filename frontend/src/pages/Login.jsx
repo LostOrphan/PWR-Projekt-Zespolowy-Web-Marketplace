@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom'
 import { useCookies } from 'react-cookie'
 import { useNavigate } from 'react-router-dom'
 import { loginUser } from '../api/auth'
+import Header from '../pages/components/Header.jsx'
+import Footer from '../pages/components/Footer.jsx'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -37,6 +39,7 @@ export default function Login() {
 
   return (
     <div className="login-container">
+      <Header />
       <div className="login-card">
         <div className="login-form-wrapper">
           <h1>Zaloguj się</h1>
@@ -69,6 +72,7 @@ export default function Login() {
           </p>
         </div>
       </div>
+      <Footer />
     </div>
   )
 }

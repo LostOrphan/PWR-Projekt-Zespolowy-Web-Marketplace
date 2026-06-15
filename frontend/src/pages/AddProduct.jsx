@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react'
 import { useCookies } from 'react-cookie'
 import { useNavigate } from 'react-router-dom'
 import { createListing, getCategories, getLocations, getDeliveryMethods } from '../api/listings'
+import Header from '../pages/components/Header.jsx'
+import Footer from '../pages/components/Footer.jsx'
 
 export default function AddProduct() {
   const [title, setTitle] = useState('')
@@ -109,6 +111,7 @@ export default function AddProduct() {
 
   return (
     <div className="login-container">
+      <Header />
       <div className="login-card">
         <div className="login-form-wrapper-reg">
 
@@ -306,6 +309,7 @@ export default function AddProduct() {
           </form>
         </div>
       </div>
+      <Footer />
     </div>
   )
 }

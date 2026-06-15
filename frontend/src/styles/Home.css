@@ -21,6 +21,12 @@
   border-bottom: 2px solid #ddd9cc;
 }
 
+.app-header{
+    position: sticky;
+    z-index: 100;
+    top: 0;
+    left: 0;
+}
 .header-bottom {
   display: flex;
   align-items: center;

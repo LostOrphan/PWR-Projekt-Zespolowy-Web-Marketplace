@@ -95,3 +95,17 @@
   background-color: #ffebee;
   border-radius: 4px;
 }
+
+.login-loading-text {
+  text-align: center;
+}
+
+.error-message {
+  color: red;
+  margin-bottom: 15px;
+}
+
+.success-message {
+  color: green;
+  margin-bottom: 15px;
+}

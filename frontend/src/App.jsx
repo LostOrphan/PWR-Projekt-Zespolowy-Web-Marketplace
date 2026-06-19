@@ -3,6 +3,7 @@ import Home from './pages/Home'
 import Login from './pages/Login'
 import ProductDetail from './pages/ProductDetail'
 import Register from './pages/Register'
+import EditUser from './pages/EditUser'
 import AddProduct from './pages/AddProduct'
 import MyListings from './pages/MyListings'
 import EditListing from './pages/EditListing'
@@ -23,6 +24,7 @@ function App() {
         <Route path="/addproduct" element={<AddProduct />} />
         <Route path="/mylistings" element={<MyListings />} />
         <Route path="/purchase-history" element={<PurchaseHistory />} />
+        <Route path="/edituser" element={<EditUser />} />
       </Routes>
     </BrowserRouter>
     </CookiesProvider>

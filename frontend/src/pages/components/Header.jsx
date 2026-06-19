@@ -52,6 +52,7 @@ export default function Header(){
               <div className="dropdown-menu">
                 <button onClick={() => navigate('/mylistings')} className="dropdown-link">Moje ogłoszenia</button>
                 <button onClick={() => navigate('/purchase-history')} className="dropdown-link">Historia zakupów</button>
+                <button onClick={() => navigate('/edituser')} className="dropdown-link">Edytuj profil</button>
                 <button onClick={handleLogout} className="dropdown-link">Wyloguj się</button>
               </div>
             )}

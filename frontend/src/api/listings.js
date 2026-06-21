@@ -401,7 +401,7 @@ export const createOrder = async (orderData, token) => {
     const data = await response.json()
 
     if (response.status === 201) {
-      // Change listing status to "Zakończone" (Completed) after successful order
+      // Change listing status to "Zakończone"  after successful order
       const listingId = orderData.listing
       const statusResult = await changeListingStatus(listingId, 'Zakończone', token)
       

@@ -322,7 +322,7 @@ class ListingViewSet(viewsets.ModelViewSet):
             # 2. Szukamy zdjęcia, upewniając się, że należy ono do TEGO ogłoszenia
             image_to_delete = ListingImage.objects.get(pk=image_pk, listing=listing)
             
-            # 3. Usuwamy zdjęcie z bazy danych (i z dysku, jeśli masz odpowiednio 
+            # 3. Usuwamy zdjęcie z bazy danych 
             image_to_delete.delete()
             
             return Response(status=http_status.HTTP_204_NO_CONTENT)

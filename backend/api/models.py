@@ -297,15 +297,12 @@ class Order(models.Model):
         on_delete=models.RESTRICT
     )
 
-    # NOWE POLE: Cena w momencie zakupu. 
-    # To kluczowe, by historia zakupów nie zmieniała się, gdy sprzedawca zmieni cenę w ogłoszeniu.
     purchase_price = models.DecimalField(
         max_digits=10, 
         decimal_places=2,
         help_text="Cena ogłoszenia w momencie kliknięcia 'Kup teraz'"
     )
 
-    # NOWE POLE: Status zamówienia
     status = models.CharField(
         max_length=20,
         choices=OrderStatus.choices,

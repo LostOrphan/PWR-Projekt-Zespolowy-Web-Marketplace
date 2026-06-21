@@ -36,6 +36,7 @@
 > 5. Utwórz i uzupełnij plik `.env`:
 > - `cp .env_example .env`
 > - `vim .env`
+> 5.1 Klucz prywatny można uzyskać wykonując komendę (będąc w środowisku venv) `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"`
 > 
 > 6. Wykonaj migrację bazy: `python manage.py migrate`
 >

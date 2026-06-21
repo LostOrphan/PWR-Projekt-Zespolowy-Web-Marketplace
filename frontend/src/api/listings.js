@@ -187,6 +187,10 @@ export const createListing = async (listingData, token) => {
       formData.append('apartment_number', listingData.apartmentNumber)
     }
 
+    if (listingData.deletedImageIds && listingData.deletedImageIds.length > 0) {
+      formData.append('deleted_image_ids', JSON.stringify(listingData.deletedImageIds))
+    }
+
     // Append delivery methods
     if (listingData.deliveryMethods && listingData.deliveryMethods.length > 0) {
       listingData.deliveryMethods.forEach((methodId) => {
@@ -280,6 +284,10 @@ export const updateListing = async (id, listingData, token) => {
       formData.append('apartment_number', listingData.apartmentNumber)
     }
 
+    if (listingData.deletedImageIds && listingData.deletedImageIds.length > 0) {
+      formData.append('deleted_image_ids', JSON.stringify(listingData.deletedImageIds))
+    }
+
     // Append delivery methods
     if (listingData.deliveryMethods && listingData.deliveryMethods.length > 0) {
       listingData.deliveryMethods.forEach((methodId) => {
@@ -307,8 +315,9 @@ export const updateListing = async (id, listingData, token) => {
     if (response.status === 200) {
       return { success: true, data }
     } else if (response.status === 400) {
+      console.error('Update listing validation error:', data)
       const errors = Object.values(data).flat().join(' ')
-      return { success: false, error: errors || 'Błąd walidacji' }
+      return { success: false, error: errors || data.error || 'Błąd walidacji' }
     } else if (response.status === 401) {
       return { success: false, error: 'Brak autoryzacji' }
     } else if (response.status === 403) {

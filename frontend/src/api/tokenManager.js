@@ -62,17 +62,28 @@ export const refreshAccessToken = async () => {
 // Wrapper for API calls that handles token refresh on 401
 export const fetchWithTokenRefresh = async (url, options = {}) => {
   const { 'Authorization': authHeader, ...restHeaders } = options.headers || {}
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+
+  let tokenToUse = authHeader
+
+  if (bearerToken && isTokenExpired(bearerToken)) {
+    const refreshResult = await refreshAccessToken()
+
+    if (refreshResult.success) {
+      tokenToUse = `Bearer ${refreshResult.data.access}`
+    }
+  }
   
   let response = await fetch(url, {
     ...options,
     headers: {
       ...restHeaders,
-      ...(authHeader && { Authorization: authHeader }),
+      ...(tokenToUse && { Authorization: tokenToUse }),
     },
   })
 
   // If unauthorized and we have a token, try to refresh it
-  if (response.status === 401 && authHeader?.includes('Bearer')) {
+  if (response.status === 401 && bearerToken && tokenToUse === authHeader) {
     const refreshResult = await refreshAccessToken()
     
     if (refreshResult.success) {

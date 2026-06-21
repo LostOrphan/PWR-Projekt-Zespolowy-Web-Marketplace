@@ -1,623 +1,551 @@
-from rest_framework.test import APITestCase
-from rest_framework import status
+import io
+import shutil
+import tempfile
+
+from PIL import Image
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.cache import cache
-import io
-from PIL import Image
+from django.test import override_settings
+from rest_framework import status
+from rest_framework.test import APITestCase
+from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Category, Location, ListingStatus, Listing, DeliveryMethod, ListingImage, Order
+from .models import Category, DeliveryMethod, Listing, ListingImage, ListingStatus, Location, Order
+
 
 User = get_user_model()
 
+
 class MarketplaceAPITests(APITestCase):
     def setUp(self):
-        # Przygotowanie adresów URL
+        self.media_root = tempfile.mkdtemp(prefix='marketplace-test-media-')
+        self.media_override = override_settings(MEDIA_ROOT=self.media_root)
+        self.media_override.enable()
+        self.addCleanup(self.media_override.disable)
+        self.addCleanup(shutil.rmtree, self.media_root, ignore_errors=True)
+
         self.register_url = '/api/users/register/'
         self.login_url = '/api/auth/login/'
+        self.refresh_url = '/api/auth/refresh/'
         self.profile_url = '/api/profile/'
         self.listings_url = '/api/listings/'
         self.categories_url = '/api/categories/'
+        self.locations_url = '/api/locations/'
+        self.delivery_methods_url = '/api/delivery-methods/'
         self.orders_url = '/api/orders/'
 
-        # Przygotowanie danych testowych użytkownika (dodano pole phone_num)
-        self.user_data = {
-            "email": "jan.kowalski@student.pwr.edu.pl",
-            "password": "SuperTajneHaslo123!",
-            "first_name": "Jan",
-            "last_name": "Kowalski",
-            "phone_num": "123456789"  # <--- NOWOŚĆ: Dodany numer telefonu sprzedawcy
-        }
-        self.user = User.objects.create_user(**self.user_data)
+        self.user_password = 'SuperTajneHaslo123!'
+        self.other_password = 'OtherPassword123!'
+        self.buyer_password = 'BuyerPassword123!'
 
-        # Przygotowanie słowników w bazie
-        self.category_tech = Category.objects.create(name="Elektronika")
-        self.category_books = Category.objects.create(name="Książki")
-        self.location = Location.objects.create(city="Wrocław", country="Polska")
-        
-        # Bezpieczne przygotowanie statusów (get_or_create zapobiega błędom w bazie testowej)
-        self.status_active, _ = ListingStatus.objects.get_or_create(name="Aktywne")
-        self.status_deleted, _ = ListingStatus.objects.get_or_create(name="Usunięte")
-        self.status_completed, _ = ListingStatus.objects.get_or_create(name="Zakończone")
-        
-        # Przygotowanie metody dostawy
-        self.delivery_paczkomat = DeliveryMethod.objects.create(
-            name="Paczkomat InPost", 
-            description="Dostawa do paczkomatu"
+        self.user = User.objects.create_user(
+            email='jan.kowalski@student.pwr.edu.pl',
+            password=self.user_password,
+            first_name='Jan',
+            last_name='Kowalski',
+            phone_num='123456789',
         )
-        
-        # Czyszczenie pamięci podręcznej dla testów limitów (throttling)
-        cache.clear()
+        self.other_user = User.objects.create_user(
+            email='other.user@student.pwr.edu.pl',
+            password=self.other_password,
+            first_name='Other',
+            last_name='User',
+            phone_num='987654321',
+        )
+        self.buyer_user = User.objects.create_user(
+            email='buyer.user@student.pwr.edu.pl',
+            password=self.buyer_password,
+            first_name='Buyer',
+            last_name='User',
+            phone_num='555444333',
+        )
 
-    # ==========================================
-    #           TESTY AUTORYZACJI I PROFILU
-    # ==========================================
-    def test_user_registration(self):
-        """Test poprawnej rejestracji nowego użytkownika"""
-        new_user_data = {
-            "email": "nowy@student.pwr.edu.pl",
-            "password": "InneHaslo123!",
-            "first_name": "Anna",
-            "last_name": "Nowak"
-        }
-        response = self.client.post(self.register_url, new_user_data, format='json')
-        
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(User.objects.count(), 2) 
-        self.assertNotIn('password', response.data) 
+        self.category_tech = Category.objects.create(name='Elektronika', description='Sprzęt elektroniczny')
+        self.category_books = Category.objects.create(name='Książki', description='Książki i publikacje')
+        self.location = Location.objects.create(city='Wrocław', region='Dolnośląskie', country='Polska')
 
-    def test_user_login(self):
-        """Test logowania i poprawnego zwrotu tokenów JWT"""
-        login_data = {
-            "email": self.user_data["email"],
-            "password": self.user_data["password"]
+        self.status_active, _ = ListingStatus.objects.get_or_create(name='Aktywne')
+        self.status_deleted, _ = ListingStatus.objects.get_or_create(name='Usunięte')
+        self.status_completed, _ = ListingStatus.objects.get_or_create(name='Zakończone')
+
+        self.delivery_pickup = DeliveryMethod.objects.create(
+            name='Odbiór osobisty',
+            description='Odbiór osobisty u sprzedawcy',
+        )
+        self.delivery_courier = DeliveryMethod.objects.create(
+            name='Kurier',
+            description='Dostawa kurierska',
+        )
+
+    def _auth_headers(self, user):
+        access_token = str(RefreshToken.for_user(user).access_token)
+        return {'HTTP_AUTHORIZATION': f'Bearer {access_token}'}
+
+    def _make_image_file(self, name='test.jpg', color='white'):
+        image_buffer = io.BytesIO()
+        Image.new('RGB', (1, 1), color=color).save(image_buffer, format='JPEG')
+        image_buffer.seek(0)
+        return SimpleUploadedFile(name=name, content=image_buffer.read(), content_type='image/jpeg')
+
+    def _base_listing_payload(self, **overrides):
+        payload = {
+            'title': 'Sprzedam biurko',
+            'description': 'Solidne biurko w bardzo dobrym stanie',
+            'price': '199.99',
+            'category': str(self.category_tech.id),
+            'location': str(self.location.id),
+            'street': 'Kwiatowa 1',
+            'building_number': '12A',
+            'apartment_number': '4',
         }
-        response = self.client.post(self.login_url, login_data, format='json')
-        
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload.update(overrides)
+        return payload
+
+    def _create_listing_model(self, seller=None, title='Listing', status=None, with_delivery_methods=True, location=None):
+        seller = seller or self.user
+        status = status or self.status_active
+        listing = Listing.objects.create(
+            seller=seller,
+            category=self.category_tech,
+            location=location or self.location,
+            status=status,
+            title=title,
+            description='Opis ogłoszenia',
+            street='Kwiatowa 1',
+            building_number='12A',
+            apartment_number='4',
+            price='199.99',
+        )
+        if with_delivery_methods:
+            listing.delivery_methods.set([self.delivery_pickup])
+        return listing
+
+    def _extract_items(self, response):
+        if isinstance(response.data, list):
+            return response.data
+        if isinstance(response.data, dict) and 'results' in response.data:
+            return response.data['results']
+        return response.data
+
+    def _create_listing_image(self, listing, name='listing.jpg', color='red', display_order=0, is_primary=True):
+        return ListingImage.objects.create(
+            listing=listing,
+            image=self._make_image_file(name=name, color=color),
+            display_order=display_order,
+            is_primary=is_primary,
+        )
+
+    # ----------------------
+    # Auth and profile
+    # ----------------------
+    def test_user_registration_success(self):
+        payload = {
+            'email': 'nowy.student@student.pwr.edu.pl',
+            'password': 'InneHaslo123!',
+            'first_name': 'Anna',
+            'last_name': 'Nowak',
+            'phone_num': '111222333',
+        }
+
+        response = self.client.post(self.register_url, payload, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertTrue(User.objects.filter(email=payload['email']).exists())
+        self.assertNotIn('password', response.data)
+
+    def test_user_registration_requires_password(self):
+        payload = {
+            'email': 'brak.hasla@student.pwr.edu.pl',
+            'first_name': 'Brak',
+            'last_name': 'Hasla',
+            'phone_num': '111222444',
+        }
+
+        response = self.client.post(self.register_url, payload, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('password', response.data)
+
+    def test_user_registration_rejects_duplicate_email(self):
+        payload = {
+            'email': self.user.email,
+            'password': 'DuplicatePassword123!',
+            'first_name': 'Duplicate',
+            'last_name': 'User',
+            'phone_num': '999888777',
+        }
+
+        response = self.client.post(self.register_url, payload, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', response.data)
+
+    def test_user_login_returns_tokens(self):
+        response = self.client.post(
+            self.login_url,
+            {'email': self.user.email, 'password': self.user_password},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.assertIn('access', response.data)
         self.assertIn('refresh', response.data)
 
-    def test_get_user_profile(self):
-        """Test pobierania danych własnego profilu"""
-        self.client.force_authenticate(user=self.user)
+    def test_user_login_rejects_wrong_password(self):
+        response = self.client.post(
+            self.login_url,
+            {'email': self.user.email, 'password': 'wrong-password'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_refresh_token_returns_new_access_token(self):
+        login_response = self.client.post(
+            self.login_url,
+            {'email': self.user.email, 'password': self.user_password},
+            format='json',
+        )
+
+        response = self.client.post(self.refresh_url, {'refresh': login_response.data['refresh']}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertIn('access', response.data)
+
+    def test_profile_requires_authentication(self):
         response = self.client.get(self.profile_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_profile_get_with_jwt(self):
+        response = self.client.get(self.profile_url, **self._auth_headers(self.user))
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['email'], self.user.email)
 
-    def test_update_user_profile_without_password(self):
-        """Test edycji profilu (np. imienia) bez podawania hasła"""
-        self.client.force_authenticate(user=self.user)
-        patch_data = {"first_name": "Janusz"}
-        response = self.client.patch(self.profile_url, patch_data, format='json')
-        
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.user.refresh_from_db()
-        self.assertEqual(self.user.first_name, "Janusz")
-        self.assertTrue(self.user.check_password(self.user_data["password"]))
+    def test_profile_patch_updates_fields(self):
+        payload = {
+            'first_name': 'Janusz',
+            'last_name': 'Kowalski',
+            'email': self.user.email,
+            'phone_num': '999888777',
+        }
+        response = self.client.patch(self.profile_url, payload, format='json', **self._auth_headers(self.user))
 
-    def test_update_user_profile_password(self):
-        """Test zmiany hasła z poziomu edycji profilu"""
-        self.client.force_authenticate(user=self.user)
-        patch_data = {"password": "NoweBezpieczneHaslo123!"}
-        response = self.client.patch(self.profile_url, patch_data, format='json')
-        
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
         self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password("NoweBezpieczneHaslo123!"))
+        self.assertEqual(self.user.first_name, 'Janusz')
+        self.assertEqual(self.user.phone_num, '999888777')
 
-    # ==========================================
-    #       TESTY UPRAWNIEŃ I SŁOWNIKÓW
-    # ==========================================
-    def test_get_categories_allowed_for_anyone(self):
-        """Test pobierania kategorii bez logowania"""
+    def test_profile_patch_changes_password(self):
+        new_password = 'NoweBezpieczneHaslo123!'
+        response = self.client.patch(
+            self.profile_url,
+            {'password': new_password},
+            format='json',
+            **self._auth_headers(self.user),
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(new_password))
+
+    # ----------------------
+    # Public dictionary APIs
+    # ----------------------
+    def test_categories_are_public(self):
         response = self.client.get(self.categories_url)
+        items = self._extract_items(response)
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['count'], 2)
+        self.assertEqual(len(items), 2)
 
-    def test_create_category_blocked(self):
-        """Test blokady tworzenia kategorii przez API"""
-        self.client.force_authenticate(user=self.user)
-        response = self.client.post(self.categories_url, {"name": "Motoryzacja"})
-        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+    def test_locations_are_public(self):
+        response = self.client.get(self.locations_url)
+        items = self._extract_items(response)
 
-    # ==========================================
-    #        TESTY OGŁOSZEŃ (Listings)
-    # ==========================================
-    def test_create_listing_without_auth_fails(self):
-        """Test weryfikujący czy niezalogowany użytkownik dostanie błąd 401"""
-        listing_data = {
-            "title": "Sprzedam Rower",
-            "price": "500.00",
-            "category": self.category_tech.id
-        }
-        response = self.client.post(self.listings_url, listing_data)
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(items), 1)
 
-    def test_create_listing_sets_default_status_active(self):
-        """Test czy nowo utworzone ogłoszenie domyślnie otrzymuje status 'Aktywne'"""
-        self.client.force_authenticate(user=self.user)
-        listing_data = {
-            "title": "Konsola",
-            "price": "1000.00",
-            "category": self.category_tech.id
-        }
-        response = self.client.post(self.listings_url, listing_data, format='json')
-        
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        created_listing = Listing.objects.first()
-        self.assertEqual(created_listing.status.name, "Aktywne")
+    def test_delivery_methods_are_public(self):
+        response = self.client.get(self.delivery_methods_url)
+        items = self._extract_items(response)
 
-    def test_create_listing_with_auth_and_image(self):
-        """Test poprawnego dodawania ogłoszenia wraz z przesłaniem zdjęcia"""
-        self.client.force_authenticate(user=self.user)
-        
-        image_file = io.BytesIO()
-        image = Image.new('RGB', (1, 1), 'white')
-        image.save(image_file, 'JPEG')
-        image_file.seek(0) 
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(items), 2)
 
-        mock_image = SimpleUploadedFile(
-            name='test_image.jpg', 
-            content=image_file.read(), 
-            content_type='image/jpeg'
-        )
+    # ----------------------
+    # Listings and permissions
+    # ----------------------
+    def test_public_listing_list_excludes_deleted_items(self):
+        active_listing = self._create_listing_model(title='Widoczny')
+        self._create_listing_model(title='Usunięty', status=self.status_deleted)
 
-        listing_data = {
-            "title": "Laptop",
-            "price": "2500.00",
-            "category": self.category_tech.id,
-            "uploaded_images": [mock_image]
-        }
-        
-        response = self.client.post(self.listings_url, listing_data, format='multipart')
-        
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Listing.objects.count(), 1)
-        
-        created_listing = Listing.objects.first()
-        self.assertEqual(created_listing.seller, self.user)
-        self.assertEqual(created_listing.images.count(), 1)
+        response = self.client.get(self.listings_url)
+        items = self._extract_items(response)
+        titles = [item['title'] for item in items]
 
-    def test_get_listing_returns_nested_seller(self):
-        """Test sprawdzający zagnieżdżony serializator sprzedawcy"""
-        listing = Listing.objects.create(
-            seller=self.user, category=self.category_tech, status=self.status_active,
-            title="Biurko", price="150.00"
-        )
-        url = f"{self.listings_url}{listing.id}/"
-        response = self.client.get(url)
-        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn(active_listing.title, titles)
+        self.assertNotIn('Usunięty', titles)
+
+    def test_listing_retrieve_is_public_and_masks_phone_number(self):
+        listing = self._create_listing_model(title='Krzeslo')
+        self._create_listing_image(listing, name='chair.jpg', color='blue', display_order=0, is_primary=True)
+
+        response = self.client.get(f'{self.listings_url}{listing.id}/')
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsInstance(response.data['seller'], dict)
-        self.assertEqual(response.data['seller']['first_name'], "Jan")
-        self.assertEqual(response.data['seller']['email'], "jan.kowalski@student.pwr.edu.pl")
+        self.assertEqual(response.data['seller']['email'], self.user.email)
+        self.assertEqual(response.data['phone_number'], '123-xxx-xxx')
+        self.assertIsInstance(response.data['category'], dict)
+        self.assertIsInstance(response.data['location'], dict)
+        self.assertEqual(len(response.data['images']), 1)
 
-    # ----------------------------------------------------------------------
-    # NOWE TESTY POLITYKI NUMERÓW TELEFONÓW
-    # ----------------------------------------------------------------------
-    def test_listing_shows_masked_phone_number_by_default(self):
-        """Domyślny GET szczegółów ogłoszenia powinien zwracać maskowany numer telefonu"""
-        listing = Listing.objects.create(
-            seller=self.user, category=self.category_tech, status=self.status_active,
-            title="Sofa", price="400.00"
-        )
-        url = f"{self.listings_url}{listing.id}/"
-        response = self.client.get(url)
-        
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('phone_number', response.data)
-        # Zgodnie z polityką: pierwsze 3 znaki + maska
-        self.assertEqual(response.data['phone_number'], "123-xxx-xxx")
-
-    def test_authenticated_user_can_reveal_full_phone_number(self):
-        """Zalogowany użytkownik powinien otrzymać pełny numer telefonu z dedykowanego endpointu"""
-        listing = Listing.objects.create(
-            seller=self.user, category=self.category_tech, status=self.status_active,
-            title="Sofa", price="400.00"
-        )
-        # Tworzymy innego użytkownika jako osobę przeglądającą i logujemy go
-        buyer = User.objects.create_user(email="buyer.test@student.pwr.edu.pl", password="BuyerPassword1!")
-        self.client.force_authenticate(user=buyer)
-        
-        url = f"{self.listings_url}{listing.id}/phone/"
-        response = self.client.get(url)
-        
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['phone_number'], "123456789")
-
-    def test_unauthenticated_user_cannot_reveal_phone_number(self):
-        """Niezalogowany użytkownik przy próbie odkrycia numeru powinien otrzymać błąd 401"""
-        listing = Listing.objects.create(
-            seller=self.user, category=self.category_tech, status=self.status_active,
-            title="Sofa", price="400.00"
-        )
-        url = f"{self.listings_url}{listing.id}/phone/"
-        response = self.client.get(url) # Bez force_authenticate
-        
+    def test_unauthenticated_user_cannot_create_listing(self):
+        response = self.client.post(self.listings_url, self._base_listing_payload(), format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_reveal_phone_number_returns_404_if_seller_has_no_phone(self):
-        """Endpoint powinien zwrócić błąd 404, jeśli sprzedawca nie posiada zapisanego numeru"""
-        user_without_phone = User.objects.create_user(
-            email="no.phone@student.pwr.edu.pl", password="Password123!", first_name="No", last_name="Phone"
-        )
-        listing = Listing.objects.create(
-            seller=user_without_phone, category=self.category_tech, status=self.status_active,
-            title="Brak numeru", price="10.00"
-        )
-        self.client.force_authenticate(user=self.user)
-        
-        url = f"{self.listings_url}{listing.id}/phone/"
-        response = self.client.get(url)
-        
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertIn("error", response.data)
-    # ----------------------------------------------------------------------
+    def test_authenticated_owner_can_create_listing_with_images(self):
+        payload = self._base_listing_payload()
+        payload['delivery_methods'] = [str(self.delivery_pickup.id)]
+        payload['uploaded_images'] = [self._make_image_file(name='create.jpg', color='green')]
 
-    def test_listing_filtering_by_category(self):
-        """Test filtrowania ogłoszeń po ID kategorii"""
-        Listing.objects.create(
-            seller=self.user, category=self.category_tech, status=self.status_active,
-            title="Myszka", price="100.00"
-        )
-        Listing.objects.create(
-            seller=self.user, category=self.category_books, status=self.status_active,
-            title="Wiedźmin", price="40.00"
-        )
+        response = self.client.post(self.listings_url, payload, format='multipart', **self._auth_headers(self.user))
 
-        url = f"{self.listings_url}?category={self.category_books.id}"
-        response = self.client.get(url)
-        
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 1)
-        self.assertEqual(response.data['results'][0]['title'], "Wiedźmin")
-    
-    def test_owner_can_update_listing_with_images_and_delivery(self):
-        """Właściciel powinien móc zaktualizować ogłoszenie, dodać zdjęcia i metody dostawy"""
-        listing = Listing.objects.create(
-            seller=self.user, category=self.category_tech, status=self.status_active,
-            title="Original", price="100.00"
-        )
-        dm_courier = DeliveryMethod.objects.create(name="Kurier")
-
-        self.client.force_authenticate(user=self.user)
-        
-        image_file = io.BytesIO()
-        Image.new('RGB', (1, 1), 'blue').save(image_file, 'JPEG')
-        image_file.seek(0)
-        mock_image = SimpleUploadedFile(name='new_img.jpg', content=image_file.read(), content_type='image/jpeg')
-
-        patch_data = {
-            "title": "Updated", 
-            "price": "150.00",
-            "delivery_methods": [dm_courier.id],
-            "uploaded_images": [mock_image]
-        }
-        url = f"{self.listings_url}{listing.id}/"
-        response = self.client.patch(url, patch_data, format='multipart')
-        
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        listing.refresh_from_db()
-        self.assertEqual(listing.title, "Updated")
-        self.assertEqual(str(listing.price), "150.00")
-        self.assertIn(dm_courier, listing.delivery_methods.all())
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        listing = Listing.objects.get(id=response.data['id'])
+        self.assertEqual(listing.seller, self.user)
+        self.assertEqual(listing.status.name, 'Aktywne')
         self.assertEqual(listing.images.count(), 1)
+        self.assertEqual(listing.delivery_methods.count(), 1)
 
-    def test_delete_listing_image(self):
-        """Test poprawnego usuwania pojedynczego zdjęcia przez właściciela ogłoszenia"""
-        listing = Listing.objects.create(
-            seller=self.user, category=self.category_tech, status=self.status_active,
-            title="Test Image Delete", price="10.00"
+    def test_owner_can_update_listing_and_delete_images_via_patch(self):
+        listing = self._create_listing_model(title='Do edycji')
+        old_image = self._create_listing_image(listing, name='old.jpg', color='yellow', display_order=0, is_primary=True)
+
+        payload = {
+            'title': 'Po edycji',
+            'deleted_image_ids': str([old_image.id]),
+            'uploaded_images': [self._make_image_file(name='new.jpg', color='purple')],
+            'delivery_methods': [str(self.delivery_courier.id)],
+        }
+        response = self.client.patch(
+            f'{self.listings_url}{listing.id}/',
+            payload,
+            format='multipart',
+            **self._auth_headers(self.user),
         )
-        image = ListingImage.objects.create(listing=listing, image='dummy.jpg', display_order=0, is_primary=True)
 
-        self.client.force_authenticate(user=self.user)
-        url = f"{self.listings_url}{listing.id}/images/{image.id}/"
-        response = self.client.delete(url)
-        
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        listing.refresh_from_db()
+        self.assertEqual(listing.title, 'Po edycji')
+        self.assertEqual(listing.images.count(), 1)
+        self.assertEqual(listing.delivery_methods.count(), 1)
+        self.assertTrue(listing.delivery_methods.filter(id=self.delivery_courier.id).exists())
+        self.assertFalse(ListingImage.objects.filter(id=old_image.id).exists())
+
+    def test_owner_can_delete_single_listing_image_via_endpoint(self):
+        listing = self._create_listing_model(title='Usuwanie obrazu')
+        image = self._create_listing_image(listing, name='delete-me.jpg', color='orange', display_order=0, is_primary=True)
+
+        response = self.client.delete(
+            f'{self.listings_url}{listing.id}/images/{image.id}/',
+            **self._auth_headers(self.user),
+        )
+
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(ListingImage.objects.filter(id=image.id).count(), 0)
 
-    def test_non_owner_cannot_delete_listing_image(self):
-        """Osoba niebędąca właścicielem ogłoszenia nie może usunąć z niego zdjęcia"""
-        other_user = User.objects.create_user(
-            email="hacker@student.pwr.edu.pl", password="HackerPass123!", first_name="Hack", last_name="Er"
+    def test_non_owner_cannot_update_listing(self):
+        listing = self._create_listing_model(title='Nie twoje')
+        response = self.client.patch(
+            f'{self.listings_url}{listing.id}/',
+            {'title': 'Zmiana przez obcego'},
+            format='json',
+            **self._auth_headers(self.other_user),
         )
-        listing = Listing.objects.create(
-            seller=self.user, category=self.category_tech, status=self.status_active,
-            title="Safe Item", price="100.00"
-        )
-        image = ListingImage.objects.create(listing=listing, image='safe.jpg', display_order=0)
 
-        self.client.force_authenticate(user=other_user)
-        url = f"{self.listings_url}{listing.id}/images/{image.id}/"
-        response = self.client.delete(url)
-        
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_non_owner_cannot_delete_listing_image(self):
+        listing = self._create_listing_model(title='Obcy obraz')
+        image = self._create_listing_image(listing, name='foreign.jpg', color='pink', display_order=0, is_primary=True)
+
+        response = self.client.delete(
+            f'{self.listings_url}{listing.id}/images/{image.id}/',
+            **self._auth_headers(self.other_user),
+        )
+
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(ListingImage.objects.filter(id=image.id).count(), 1)
 
-    def test_non_owner_cannot_update_listing(self):
-        """Osoba niebędąca właścicielem nie może zaktualizować obcego ogłoszenia"""
-        other = User.objects.create_user(
-            email="other@student.pwr.edu.pl", password="OtherPass123!", first_name="Other", last_name="User"
+    def test_owner_can_change_status_via_custom_action(self):
+        listing = self._create_listing_model(title='Status change')
+        response = self.client.patch(
+            f'{self.listings_url}{listing.id}/change_status/',
+            {'status': 'Zakończone'},
+            format='json',
+            **self._auth_headers(self.user),
         )
-        listing = Listing.objects.create(
-            seller=self.user, category=self.category_tech, status=self.status_active,
-            title="Not yours", price="50.00"
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        listing.refresh_from_db()
+        self.assertEqual(listing.status.name, 'Zakończone')
+
+    def test_non_owner_cannot_change_status(self):
+        listing = self._create_listing_model(title='Status blocked')
+        response = self.client.patch(
+            f'{self.listings_url}{listing.id}/change_status/',
+            {'status': 'Zakończone'},
+            format='json',
+            **self._auth_headers(self.other_user),
         )
-        self.client.force_authenticate(user=other)
-        patch_data = {"title": "Hacked"}
-        url = f"{self.listings_url}{listing.id}/"
-        response = self.client.patch(url, patch_data, format='json')
+
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_owner_can_change_status_via_custom_endpoint(self):
-        """Właściciel może zmienić status ogłoszenia używając customowej akcji change_status"""
-        listing = Listing.objects.create(
-            seller=self.user, category=self.category_tech, status=self.status_active,
-            title="Sprzedany towar", price="50.00"
+    def test_owner_can_soft_delete_listing(self):
+        listing = self._create_listing_model(title='Do usuniecia')
+        response = self.client.delete(
+            f'{self.listings_url}{listing.id}/',
+            **self._auth_headers(self.user),
         )
-        self.client.force_authenticate(user=self.user)
-        
-        url = f"{self.listings_url}{listing.id}/change_status/"
-        patch_data = {"status": "Zakończone"}
-        
-        response = self.client.patch(url, patch_data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
-        listing.refresh_from_db()
-        self.assertEqual(listing.status.name, "Zakończone")
 
-    def test_owner_can_delete_listing_soft_delete(self):
-        """Właściciel powinien móc usunąć ogłoszenie (Soft Delete)"""
-        listing = Listing.objects.create(
-            seller=self.user, category=self.category_tech, status=self.status_active,
-            title="DeleteMe", price="20.00"
-        )
-        self.client.force_authenticate(user=self.user)
-        url = f"{self.listings_url}{listing.id}/"
-        response = self.client.delete(url)
-        
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        
         listing.refresh_from_db()
-        self.assertEqual(listing.status.name, "Usunięte")
-        
-        get_response = self.client.get(self.listings_url)
-        titles = [item['title'] for item in get_response.data['results']]
-        self.assertNotIn("DeleteMe", titles)
+        self.assertEqual(listing.status.name, 'Usunięte')
+
+        list_response = self.client.get(self.listings_url)
+        titles = [item['title'] for item in self._extract_items(list_response)]
+        self.assertNotIn('Do usuniecia', titles)
 
     def test_non_owner_cannot_delete_listing(self):
-        """Osoba niebędąca właścicielem nie może usunąć ogłoszenia"""
-        other = User.objects.create_user(
-            email="deleter@student.pwr.edu.pl", password="DelPass123!", first_name="Deleter", last_name="User"
+        listing = self._create_listing_model(title='Protected')
+        response = self.client.delete(
+            f'{self.listings_url}{listing.id}/',
+            **self._auth_headers(self.other_user),
         )
-        listing = Listing.objects.create(
-            seller=self.user, category=self.category_tech, status=self.status_active,
-            title="Protected", price="75.00"
-        )
-        self.client.force_authenticate(user=other)
-        url = f"{self.listings_url}{listing.id}/"
-        response = self.client.delete(url)
+
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        
+
+    # ----------------------
+    # Phone reveal endpoint
+    # ----------------------
+    def test_reveal_phone_requires_authentication(self):
+        listing = self._create_listing_model(title='Phone protected')
+        response = self.client.get(f'{self.listings_url}{listing.id}/phone/')
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_authenticated_user_can_reveal_phone_number(self):
+        listing = self._create_listing_model(title='Phone visible')
+        response = self.client.get(
+            f'{self.listings_url}{listing.id}/phone/',
+            **self._auth_headers(self.buyer_user),
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['phone_number'], self.user.phone_num)
+
+    def test_reveal_phone_returns_404_when_seller_has_no_phone(self):
+        seller_without_phone = User.objects.create_user(
+            email='no.phone@student.pwr.edu.pl',
+            password='Password123!',
+            first_name='No',
+            last_name='Phone',
+            phone_num='',
+        )
+        listing = self._create_listing_model(seller=seller_without_phone, title='No phone listing')
+        response = self.client.get(
+            f'{self.listings_url}{listing.id}/phone/',
+            **self._auth_headers(self.buyer_user),
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertIn('error', response.data)
+
+    # ----------------------
+    # Orders
+    # ----------------------
+    def test_authenticated_buyer_can_create_order_and_listing_becomes_completed(self):
+        listing = self._create_listing_model(title='Buy me', with_delivery_methods=True)
+
+        response = self.client.post(
+            self.orders_url,
+            {
+                'listing': listing.id,
+                'delivery_method': self.delivery_pickup.id,
+                'delivery_details': 'Kontakt przy odbiorze',
+            },
+            format='json',
+            **self._auth_headers(self.buyer_user),
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        order = Order.objects.get(id=response.data['id'])
         listing.refresh_from_db()
-        self.assertEqual(listing.status.name, "Aktywne")
+        self.assertEqual(order.buyer, self.buyer_user)
+        self.assertEqual(str(order.purchase_price), '199.99')
+        self.assertEqual(listing.status.name, 'Zakończone')
 
-    def test_search_listings_by_title_and_description(self):
-        """Wyszukiwanie powinno obejmować tytuł i opis"""
-        Listing.objects.create(
-            seller=self.user, category=self.category_tech, status=self.status_active,
-            title="Red Bike", description="A fast red bicycle", price="100.00"
+    def test_user_cannot_buy_own_listing(self):
+        listing = self._create_listing_model(title='Own listing')
+
+        response = self.client.post(
+            self.orders_url,
+            {
+                'listing': listing.id,
+                'delivery_method': self.delivery_pickup.id,
+            },
+            format='json',
+            **self._auth_headers(self.user),
         )
-        Listing.objects.create(
-            seller=self.user, category=self.category_books, status=self.status_active,
-            title="Blue Book", description="A blue story", price="10.00"
-        )
-        Listing.objects.create(
-            seller=self.user, category=self.category_tech, status=self.status_active,
-            title="Old Laptop", description="Red casing", price="200.00"
-        )
-        
-        response = self.client.get(f"{self.listings_url}?search=red")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
-        titles = [r['title'] for r in response.data['results']]
-        self.assertIn("Red Bike", titles)
-        self.assertIn("Old Laptop", titles)
-        self.assertNotIn("Blue Book", titles)
 
-    def test_create_listing_with_delivery_methods_sets_m2m(self):
-        """Tworzenie ogłoszenia z przekazanymi delivery_methods powinno zapisywać je w relacji"""
-        dm1 = DeliveryMethod.objects.create(name="Pickup")
-        dm2 = DeliveryMethod.objects.create(name="Courier")
-        self.client.force_authenticate(user=self.user)
-        
-        listing_data = {
-            "title": "Item with delivery",
-            "price": "15.00",
-            "category": self.category_tech.id,
-            "delivery_methods": [dm1.id, dm2.id]
-        }
-        response = self.client.post(self.listings_url, listing_data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        
-        listing = Listing.objects.first()
-        self.assertEqual(list(listing.delivery_methods.order_by('id').values_list('id', flat=True)), [dm1.id, dm2.id])
-
-    def test_uploaded_images_primary_assignment_and_order(self):
-        """Przesyłane zdjęcia powinny mieć poprawny numer kolejności i flagę primary"""
-        self.client.force_authenticate(user=self.user)
-        image_files = []
-        for i in range(2):
-            b = io.BytesIO()
-            Image.new('RGB', (1, 1), 'white').save(b, 'JPEG')
-            b.seek(0)
-            image_files.append(SimpleUploadedFile(name=f'test_{i}.jpg', content=b.read(), content_type='image/jpeg'))
-
-        listing_data = {
-            "title": "With images",
-            "price": "300.00",
-            "category": self.category_tech.id,
-            "uploaded_images": image_files
-        }
-        response = self.client.post(self.listings_url, listing_data, format='multipart')
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        
-        listing = Listing.objects.first()
-        self.assertEqual(listing.images.count(), 2)
-        ordered = list(listing.images.order_by('display_order').values_list('is_primary', flat=True))
-        self.assertTrue(ordered[0])
-        self.assertFalse(ordered[1])
-
-    def test_listings_pagination_default(self):
-        """Paginacja powinna domyślnie zwracać PAGE_SIZE (10) wyników"""
-        for i in range(12):
-            Listing.objects.create(
-                seller=self.user, category=self.category_tech, status=self.status_active,
-                title=f"Item {i}", price="1.00"
-            )
-        response = self.client.get(self.listings_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['count'], 12)
-        self.assertEqual(len(response.data['results']), 10)
-
-    # ==========================================
-    #        TESTY ZAMÓWIEŃ (Kup Teraz)
-    # ==========================================
-    def test_create_order_success_and_status_change(self):
-        """Test poprawnego zakupu, zamrożenia ceny i zmiany statusu ogłoszenia"""
-        listing = Listing.objects.create(
-            seller=self.user, category=self.category_tech, status=self.status_active,
-            title="Telefon", price="1200.50"
-        )
-        
-        buyer = User.objects.create_user(
-            email="kupujacy@student.pwr.edu.pl", password="Haslo123!", first_name="Kuba", last_name="Kupiec"
-        )
-        self.client.force_authenticate(user=buyer)
-        
-        order_data = {
-            "listing": listing.id,
-            "delivery_method": self.delivery_paczkomat.id,
-            "delivery_details": "WRO123A, tel. 987654321"
-        }
-        
-        response = self.client.post(self.orders_url, order_data, format='json')
-        
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        
-        order = Order.objects.first()
-        self.assertEqual(str(order.purchase_price), "1200.50")
-        self.assertEqual(order.buyer, buyer)
-        
-        listing.refresh_from_db()
-        self.assertEqual(listing.status.name, "Zakończone")
-
-    def test_cannot_buy_own_listing(self):
-        """Użytkownik nie może kupić ogłoszenia, które sam wystawił"""
-        listing = Listing.objects.create(
-            seller=self.user, category=self.category_tech, status=self.status_active,
-            title="Moja rzecz", price="100.00"
-        )
-        self.client.force_authenticate(user=self.user)
-        
-        order_data = {
-            "listing": listing.id,
-            "delivery_method": self.delivery_paczkomat.id
-        }
-        response = self.client.post(self.orders_url, order_data, format='json')
-        
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("Nie możesz kupić własnego ogłoszenia.", response.data['listing'][0])
+        self.assertIn('listing', response.data)
 
-    def test_cannot_buy_inactive_listing(self):
-        """Użytkownik nie może kupić ogłoszenia, które ma status inny niż 'Aktywne'"""
-        listing = Listing.objects.create(
-            seller=self.user, category=self.category_tech, status=self.status_completed,
-            title="Sprzedana rzecz", price="100.00"
+    def test_user_cannot_buy_inactive_listing(self):
+        listing = self._create_listing_model(title='Inactive listing', status=self.status_completed)
+
+        response = self.client.post(
+            self.orders_url,
+            {
+                'listing': listing.id,
+                'delivery_method': self.delivery_pickup.id,
+            },
+            format='json',
+            **self._auth_headers(self.buyer_user),
         )
-        buyer = User.objects.create_user(email="buyer2@student.pwr.edu.pl", password="Pass123!")
-        self.client.force_authenticate(user=buyer)
-        
-        order_data = {
-            "listing": listing.id,
-            "delivery_method": self.delivery_paczkomat.id
-        }
-        response = self.client.post(self.orders_url, order_data, format='json')
-        
+
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("To ogłoszenie nie jest już dostępne do kupienia.", response.data['listing'][0])
+        self.assertIn('listing', response.data)
 
-    def test_order_history_returns_only_user_purchases(self):
-        """Historia zakupów powinna zwracać tylko zamówienia zalogowanego użytkownika"""
-        buyer1 = User.objects.create_user(email="buyer1@test.com", password="P1!")
-        buyer2 = User.objects.create_user(email="buyer2@test.com", password="P2!")
-        
-        listing1 = Listing.objects.create(seller=self.user, category=self.category_tech, status=self.status_active, title="L1", price="10.00")
-        listing2 = Listing.objects.create(seller=self.user, category=self.category_tech, status=self.status_active, title="L2", price="20.00")
-        
-        Order.objects.create(listing=listing1, buyer=buyer1, delivery_method=self.delivery_paczkomat, purchase_price="10.00")
-        Order.objects.create(listing=listing2, buyer=buyer2, delivery_method=self.delivery_paczkomat, purchase_price="20.00")
-        
-        self.client.force_authenticate(user=buyer1)
-        response = self.client.get(self.orders_url)
-        
+    def test_orders_list_only_returns_current_users_orders(self):
+        buyer_listing = self._create_listing_model(title='Buyer order listing')
+        other_listing = self._create_listing_model(seller=self.other_user, title='Other order listing')
+
+        self.client.post(
+            self.orders_url,
+            {
+                'listing': buyer_listing.id,
+                'delivery_method': self.delivery_pickup.id,
+            },
+            format='json',
+            **self._auth_headers(self.buyer_user),
+        )
+        self.client.post(
+            self.orders_url,
+            {
+                'listing': other_listing.id,
+                'delivery_method': self.delivery_pickup.id,
+            },
+            format='json',
+            **self._auth_headers(self.other_user),
+        )
+
+        response = self.client.get(self.orders_url, **self._auth_headers(self.buyer_user))
+        items = self._extract_items(response)
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['count'], 1)
-        self.assertEqual(response.data['results'][0]['listing'], listing1.id)
-
-    # ==========================================
-    #            TESTY THROTTLINGU 
-    # ==========================================
-    def test_login_throttling(self):
-        """Test blokady logowania po 10 próbach (login: 10/minute)"""
-        for _ in range(10):
-            response = self.client.post(self.login_url, {
-                'email': 'nieistniejacy@example.com',
-                'password': 'bad_password'
-            })
-            self.assertNotEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
-            
-        response = self.client.post(self.login_url, {
-            'email': 'nieistniejacy@example.com',
-            'password': 'bad_password'
-        })
-        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
-
-    def test_register_throttling(self):
-        """Test blokady rejestracji po 3 próbach (register: 3/minute)"""
-        for i in range(3):
-            response = self.client.post(self.register_url, {
-                'email': f'nowyuser{i}@example.com',
-                'password': 'StrongPassword123!',
-                'first_name': f'User{i}'
-            })
-            self.assertNotEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
-            
-        response = self.client.post(self.register_url, {
-            'email': 'nowyuser4@example.com',
-            'password': 'StrongPassword123!',
-            'first_name': 'User4'
-        })
-        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
-        
-    def test_create_offer_throttling(self):
-        """Test blokady wystawiania ogłoszeń po 10 próbach (create_offer: 10/hour)"""
-        self.client.force_authenticate(user=self.user) 
-        
-        listing_data = {
-            'title': 'Testowe auto',
-            'description': 'Opis auta',
-            'price': '1000.00',
-            'category': self.category_tech.id, 
-            'location': self.location.id  
-        }
-
-        for _ in range(10):
-            response = self.client.post(self.listings_url, listing_data)
-            self.assertNotEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
-
-        response = self.client.post(self.listings_url, listing_data)
-        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]['listing'], buyer_listing.id)

@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from rest_framework import generics, viewsets, permissions
+from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth import get_user_model
 from .models import Listing, Category, Location, ListingImage, DeliveryMethod
@@ -241,6 +242,15 @@ class ListingViewSet(viewsets.ModelViewSet):
         instance.status = deleted_status
         instance.save()
         return Response(status=http_status.HTTP_204_NO_CONTENT)
+
+    def partial_update(self, request, *args, **kwargs):
+        try:
+            return super().partial_update(request, *args, **kwargs)
+        except ValidationError as exc:
+            print("PATCH validation error for listing", kwargs.get('pk'), exc.detail)
+            print("PATCH request.data keys:", list(request.data.keys()))
+            print("PATCH request.FILES keys:", list(request.FILES.keys()))
+            raise
 
     def get_queryset(self):
         qs = super().get_queryset()

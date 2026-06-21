@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useCookies } from 'react-cookie'
 import { getListingById, getCategories } from '../api/listings'
 import { logoutUser } from '../api/auth'
+import { fetchWithTokenRefresh } from '../api/tokenManager'
 import userAvatar from '../assets/user.png'
 import Header from '../pages/components/Header.jsx'
 import Footer from '../pages/components/Footer.jsx'
@@ -70,7 +71,7 @@ export default function ProductDetail() {
 
     setPhoneLoading(true)
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/listings/${id}/phone/`, {
+      const response = await fetchWithTokenRefresh(`http://127.0.0.1:8000/api/listings/${id}/phone/`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${cookies.token}`,

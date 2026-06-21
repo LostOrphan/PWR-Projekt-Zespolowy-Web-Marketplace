@@ -25,6 +25,7 @@ export default function EditListing() {
   const [imageFiles, setImageFiles] = useState([])
   const [previewImages, setPreviewImages] = useState([])
   const [existingImages, setExistingImages] = useState([])
+  const [deletedImageIds, setDeletedImageIds] = useState([])
   const [cookies] = useCookies(['token'])
   const navigate = useNavigate()
   const { id } = useParams()
@@ -59,6 +60,7 @@ export default function EditListing() {
         setLocation(listing.location?.id || '')
         setLocationSearch(listing.location?.city || '')
         setExistingImages(listing.images || [])
+        setDeletedImageIds([])
         
         // Jeśli ogłoszenie ma metody dostawy, załaduj je. Jeśli nie, wybierz pierwszą z listy (odbiór osobisty) jako domyślną.
         if (listing.delivery_methods && listing.delivery_methods.length > 0) {
@@ -87,6 +89,7 @@ export default function EditListing() {
 
   const removeExistingImage = (imageId) => {
     setExistingImages((prev) => prev.filter((img) => img.id !== imageId))
+    setDeletedImageIds((prev) => [...prev, imageId])
   }
 
   const filteredLocations = locations.filter((loc) =>
@@ -111,7 +114,9 @@ export default function EditListing() {
       const result = await updateListing(id, {
         title, category, price, description, location,
         street, buildingNumber, apartmentNumber,
-        deliveryMethods: selectedDeliveryMethods, imageFiles,
+        deliveryMethods: selectedDeliveryMethods,
+        imageFiles,
+        deletedImageIds,
       }, cookies.token)
 
       if (result.success) {
@@ -177,7 +182,7 @@ export default function EditListing() {
             <div className="form-group">
               <label>Zdjęcia:</label>
               <div className="photos">
-                <input type="file" required multiple accept="image/*" onChange={handleImageSelect} />
+                <input type="file"  multiple accept="image/*" onChange={handleImageSelect} />
 
                 {/* Istniejące zdjęcia */}
                 {existingImages.length > 0 && (

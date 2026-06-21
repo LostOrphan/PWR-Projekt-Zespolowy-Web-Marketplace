@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCookies } from 'react-cookie'
 import { useState, useEffect } from 'react'
+import { logoutUser } from '../../api/auth'
 import '../../styles/Home.css';
 import userAvatar from "../../assets/user.png"
 export default function Header(){
@@ -10,10 +11,7 @@ export default function Header(){
     const [userDropdownOpen, setUserDropdownOpen] = useState(false)
     const navigate = useNavigate();
     const handleLogout = async (e) => {
-      removeCookie("username")
-      removeCookie("token")
-      removeCookie("email")
-      removeCookie('currentSearch')
+      logoutUser(removeCookie)
       navigate('/login')
     }
     return (

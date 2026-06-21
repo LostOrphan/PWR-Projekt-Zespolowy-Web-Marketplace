@@ -1,4 +1,5 @@
 import { API_ENDPOINTS } from './config'
+import { fetchWithTokenRefresh } from './tokenManager'
 import Cookies from 'universal-cookie'
 const cookies = new Cookies()
 
@@ -91,7 +92,7 @@ export const getUserProfile = async (token) => {
   try {
     if (!token) return { success: false, error: 'Brak tokenu autoryzacji.' }
 
-    const response = await fetch(API_ENDPOINTS.profile, {
+    const response = await fetchWithTokenRefresh(API_ENDPOINTS.profile, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -129,7 +130,7 @@ export const updateUserProfile = async (userData, token) => {
       bodyData.password = userData.password
     }
 
-    const response = await fetch(API_ENDPOINTS.profile, {
+    const response = await fetchWithTokenRefresh(API_ENDPOINTS.profile, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',

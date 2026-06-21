@@ -25,7 +25,12 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ('id', 'email', 'first_name', 'last_name', 'phone_num', 'password', 'date_joined')
         extra_kwargs = {
-            'date_joined': {'read_only': True}
+            'date_joined': {'read_only': True},
+            'email': {
+                'error_messages': {
+                    'unique': 'email jest już uzyty'
+                }
+            }
         }
 
     def validate(self, attrs):
@@ -121,6 +126,11 @@ class ListingSerializer(serializers.ModelSerializer):
     images = ListingImageSerializer(many=True, read_only=True)
     seller = SellerSerializer(read_only=True)
     category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
+    delivery_methods = serializers.PrimaryKeyRelatedField(
+        queryset=DeliveryMethod.objects.all(),
+        many=True,
+        required=False
+    )
     location = serializers.PrimaryKeyRelatedField(
         queryset=Location.objects.all(),
         required=False,
@@ -128,9 +138,14 @@ class ListingSerializer(serializers.ModelSerializer):
     )
     phone_number = serializers.SerializerMethodField()
     
-    # Dodatkowe pole do przyjmowania plików zdjęć z frontendu (FormData)
     uploaded_images = serializers.ListField(
         child=serializers.ImageField(max_length=1000000, allow_empty_file=False, use_url=False),
+        write_only=True,
+        required=False
+    )
+    
+    deleted_image_ids = serializers.ListField(
+        child=serializers.IntegerField(),
         write_only=True,
         required=False
     )
@@ -144,39 +159,77 @@ class ListingSerializer(serializers.ModelSerializer):
             'street', 'building_number', 'apartment_number', 
             'delivery_methods',
             'created_at', 'updated_at', 
-            'images', 'uploaded_images'
+            'images', 'uploaded_images', 'deleted_image_ids'
         )
         read_only_fields = ('seller', 'status', 'created_at', 'updated_at')
-        
-        # Zapobiega możliwości wpisania samej spacji w polach adresowych
         extra_kwargs = {
-            'street': {
-                'allow_blank': False,
-                'error_messages': {'blank': 'Ulica musi być albo pusta albo zawierać poprawne dane.'}
-            },
-            'building_number': {
-                'allow_blank': False,
-                'error_messages': {'blank': 'Numer budynku musi być albo pusty albo zawierać poprawne dane.'}
-            },
-            'apartment_number': {
-                'allow_blank': False,
-                'error_messages': {'blank': 'Numer lokalu musi być albo pusty albo zawierać poprawne dane.'}
+            'street': {'allow_blank': False, 'error_messages': {'blank': 'Ulica musi być albo pusta albo zawierać poprawne dane.'}},
+            'building_number': {'allow_blank': False, 'error_messages': {'blank': 'Numer budynku musi być albo pusty albo zawierać poprawne dane.'}},
+            'apartment_number': {'allow_blank': False, 'error_messages': {'blank': 'Numer lokalu musi być albo pusty albo zawierać poprawne dane.'}},
+            'delivery_methods': {'allow_empty': False, 'error_messages': {'empty': 'należy wybrać przynajmniej jedną metodę dostawy'}
             }
         }
 
+    def to_internal_value(self, data):
+        if hasattr(data, '_mutable'):
+            data = data.copy()
+
+        if hasattr(data, 'getlist'):
+            if 'delivery_methods' in data:
+                data.setlist('delivery_methods', data.getlist('delivery_methods'))
+
+            if 'uploaded_images' in data:
+                data.setlist('uploaded_images', data.getlist('uploaded_images'))
+
+            if 'uploaded_images[]' in data and 'uploaded_images' not in data:
+                data.setlist('uploaded_images', data.getlist('uploaded_images[]'))
+
+            if 'deleted_image_ids[]' in data and 'deleted_image_ids' not in data:
+                data.setlist('deleted_image_ids', data.getlist('deleted_image_ids[]'))
+
+            if 'deleted_image_ids' in data:
+                raw_deleted_ids = data.getlist('deleted_image_ids')
+                parsed_deleted_ids = []
+
+                import json
+
+                for item in raw_deleted_ids:
+                    if isinstance(item, str):
+                        item = item.strip()
+                        if not item:
+                            continue
+                        if item.startswith('[') and item.endswith(']'):
+                            try:
+                                parsed_value = json.loads(item)
+                            except json.JSONDecodeError:
+                                continue
+                            if isinstance(parsed_value, list):
+                                for parsed_item in parsed_value:
+                                    if str(parsed_item).isdigit():
+                                        parsed_deleted_ids.append(int(parsed_item))
+                                continue
+                        if item.isdigit():
+                            parsed_deleted_ids.append(int(item))
+                    elif isinstance(item, int):
+                        parsed_deleted_ids.append(item)
+                    elif isinstance(item, list):
+                        for nested_item in item:
+                            if str(nested_item).isdigit():
+                                parsed_deleted_ids.append(int(nested_item))
+
+                data.setlist('deleted_image_ids', parsed_deleted_ids)
+
+        return super().to_internal_value(data)
+
     def validate_uploaded_images(self, value):
-        """Zintegrowana walidacja zdjęć przed wejściem do metody create/update"""
         if len(value) > 10:
             raise serializers.ValidationError('Ogłoszenie może posiadać maksymalnie 10 zdjęć.')
-        
         allowed_extensions = ['jpg', 'jpeg', 'png']
         for image in value:
             if hasattr(image, 'name'):
                 ext = image.name.split('.')[-1].lower()
                 if ext not in allowed_extensions:
-                    raise serializers.ValidationError(
-                        'Zdjęcia zawierają zły format. Dozwolone formaty to: png, jpg, jpeg.'
-                    )
+                    raise serializers.ValidationError('Zdjęcia zawierają zły format. Dozwolone formaty to: png, jpg, jpeg.')
         return value
 
     def to_representation(self, instance):
@@ -186,66 +239,55 @@ class ListingSerializer(serializers.ModelSerializer):
         return data
 
     def get_phone_number(self, obj):
-        """Pobiera numer telefonu sprzedawcy i zwraca go w formacie maskowanym 123-xxx-xxx"""
         phone = obj.seller.phone_num
-        
-        if not phone:
-            return None
-            
+        if not phone: return None
         clean_phone = ''.join(c for c in str(phone) if c.isdigit())
-        
-        if len(clean_phone) >= 3:
-            return f"{clean_phone[:3]}-xxx-xxx"
-            
+        if len(clean_phone) >= 3: return f"{clean_phone[:3]}-xxx-xxx"
         return clean_phone  
 
     def create(self, validated_data):
         delivery_methods = validated_data.pop('delivery_methods', [])
         uploaded_images = validated_data.pop('uploaded_images', [])
+        validated_data.pop('deleted_image_ids', None)
         
-        # 1. Tworzymy samo ogłoszenie
         listing = Listing.objects.create(**validated_data)
-        
-        # 2. Dodajemy metody dostawy
         if delivery_methods:
             listing.delivery_methods.set(delivery_methods)
 
-        # 3. Zapisujemy prawidłowe zdjęcia
         for index, image in enumerate(uploaded_images):
             ListingImage.objects.create(
-                listing=listing,
-                image=image,
-                display_order=index,
-                is_primary=(index == 0)
+                listing=listing, image=image, display_order=index, is_primary=(index == 0)
             )
-
         return listing
+
     def update(self, instance, validated_data):
-        # 1. Wyciągamy dane specjalne
         delivery_methods = validated_data.pop('delivery_methods', None)
         uploaded_images = validated_data.pop('uploaded_images', [])
-
-        # 2. Aktualizujemy podstawowe pola ogłoszenia
+        deleted_image_ids = validated_data.pop('deleted_image_ids', [])
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        # 3. Obsługa metod dostawy
         if delivery_methods is not None:
             instance.delivery_methods.set(delivery_methods)
 
-        # 4. Obsługa nowych zdjęć (dodawanie na końcu kolejki)
+        # Usuwanie zdjęć z bazy danych
+        if deleted_image_ids:
+            ListingImage.objects.filter(id__in=deleted_image_ids, listing=instance).delete()
+
         if uploaded_images:
             last_image = instance.images.order_by('display_order').last()
             start_index = (last_image.display_order + 1) if last_image else 0
-            
             for index, image in enumerate(uploaded_images):
                 ListingImage.objects.create(
-                    listing=instance,
-                    image=image,
-                    display_order=start_index + index,
-                    is_primary=False 
+                    listing=instance, image=image, display_order=start_index + index, is_primary=False 
                 )
+
+        if instance.images.exists() and not instance.images.filter(is_primary=True).exists():
+            first_available_image = instance.images.order_by('display_order').first()
+            if first_available_image:
+                first_available_image.is_primary = True
+                first_available_image.save()
 
         return instance
 class ListingListSerializer(serializers.ModelSerializer):
